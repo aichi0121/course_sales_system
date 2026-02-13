@@ -1,29 +1,35 @@
 import axios from "axios";
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "";
-const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+// Read env vars lazily to ensure they are available when needed
+function getBotToken() {
+  return process.env.TELEGRAM_BOT_TOKEN || "";
+}
+function getChatId() {
+  return process.env.TELEGRAM_CHAT_ID || "";
+}
 
 export function isTelegramConfigured(): boolean {
-  return !!TELEGRAM_BOT_TOKEN && !!TELEGRAM_CHAT_ID;
+  return !!getBotToken() && !!getChatId();
 }
 
 export async function sendTelegramMessage(text: string, chatId?: string): Promise<boolean> {
-  if (!TELEGRAM_BOT_TOKEN) {
+  const token = getBotToken();
+  if (!token) {
     console.warn("[Telegram] Bot token not configured");
     return false;
   }
-  const targetChatId = chatId || TELEGRAM_CHAT_ID;
+  const targetChatId = chatId || getChatId();
   if (!targetChatId) {
     console.warn("[Telegram] Chat ID not configured");
     return false;
   }
   try {
-    await axios.post(`${TELEGRAM_API}/sendMessage`, {
+    const res = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
       chat_id: targetChatId,
       text,
       parse_mode: "HTML",
     });
+    console.log("[Telegram] Message sent successfully to chat:", targetChatId);
     return true;
   } catch (error: any) {
     console.error("[Telegram] Failed to send message:", error?.response?.data || error.message);
