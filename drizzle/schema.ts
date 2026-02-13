@@ -67,8 +67,10 @@ export const courses = mysqlTable("courses", {
   isPublic: boolean("isPublic").default(true).notNull(),
   /** 課程來源 */
   source: mysqlEnum("source", ["自購", "交換"]).default("自購").notNull(),
-  /** 來源講師（交換來源時） */
-  sourceTeacher: varchar("sourceTeacher", { length: 255 }),
+  /** 交換對象（交換來源時記錄對方名稱） */
+  exchangePartner: varchar("exchangePartner", { length: 255 }),
+  /** 購入價格（成本價，僅後台可見） */
+  costPrice: int("costPrice"),
   /** 是否允許交換 */
   allowExchange: boolean("allowExchange").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -126,7 +128,7 @@ export const orders = mysqlTable("orders", {
   totalAmount: int("totalAmount").notNull().default(0),
   discountAmount: int("discountAmount").notNull().default(0),
   finalAmount: int("finalAmount").notNull().default(0),
-  status: mysqlEnum("orderStatus", ["待處理", "待確認", "已付款", "已完成", "已取消"]).default("待處理").notNull(),
+  status: mysqlEnum("orderStatus", ["待處理", "待確認", "已付款", "待交付", "已完成", "已取消"]).default("待處理").notNull(),
   paymentMethod: varchar("paymentMethod", { length: 50 }),
   paymentNotifiedAt: timestamp("paymentNotifiedAt"),
   paidAt: timestamp("paidAt"),
@@ -190,8 +192,8 @@ export const exchanges = mysqlTable("exchanges", {
   offeredCourseDescription: text("offeredCourseDescription"),
   /** 交換方式：帳號、下載原檔、錄影 */
   provideMethod: mysqlEnum("provideMethod", ["帳號", "下載原檔", "錄影"]).notNull(),
-  /** 交換狀態：待審核、確認交換、婉拒 */
-  status: mysqlEnum("exchangeStatus", ["待審核", "確認交換", "婉拒"]).default("待審核").notNull(),
+  /** 交換狀態：待審核、確認交換、待交付、婉拒 */
+  status: mysqlEnum("exchangeStatus", ["待審核", "確認交換", "待交付", "婉拒"]).default("待審核").notNull(),
   /** 婉拒原因 */
   rejectReason: text("rejectReason"),
   /** 完成時間 */

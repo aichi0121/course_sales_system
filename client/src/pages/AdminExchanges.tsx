@@ -8,11 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-const EXCHANGE_STATUSES = ["待審核", "確認交換", "婉拒"] as const;
+const EXCHANGE_STATUSES = ["待審核", "確認交換", "待交付", "婉拒"] as const;
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   "待審核": { label: "待審核", className: "bg-yellow-500 text-white" },
   "確認交換": { label: "確認交換", className: "bg-green-600 text-white" },
+  "待交付": { label: "待交付", className: "bg-orange-500 text-white" },
   "婉拒": { label: "婉拒", className: "bg-red-500 text-white" },
 };
 

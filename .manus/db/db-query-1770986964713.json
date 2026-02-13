@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE courses CHANGE COLUMN sourceTeacher exchangePartner VARCHAR(255);\nALTER TABLE courses ADD COLUMN costPrice INT NULL AFTER exchangePartner;\nALTER TABLE orders MODIFY COLUMN orderStatus ENUM('待處理', '待確認', '已付款', '待交付', '已完成', '已取消') NOT NULL DEFAULT '待處理';\nALTER TABLE exchanges MODIFY COLUMN exchangeStatus ENUM('待審核', '確認交換', '待交付', '婉拒') NOT NULL DEFAULT '待審核';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2MszHx5kdzDBeHj.root --database dXUckrobvf8MpmEcmPvpzD --execute ALTER TABLE courses CHANGE COLUMN sourceTeacher exchangePartner VARCHAR(255);\nALTER TABLE courses ADD COLUMN costPrice INT NULL AFTER exchangePartner;\nALTER TABLE orders MODIFY COLUMN orderStatus ENUM('待處理', '待確認', '已付款', '待交付', '已完成', '已取消') NOT NULL DEFAULT '待處理';\nALTER TABLE exchanges MODIFY COLUMN exchangeStatus ENUM('待審核', '確認交換', '待交付', '婉拒') NOT NULL DEFAULT '待審核';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 4516
+}

@@ -185,12 +185,14 @@ export const appRouter = router({
         ytLink: z.string().optional(),
         cloudLink: z.string().optional(),
         isPublic: z.boolean().default(true),
+        source: z.enum(["自購", "交換"]).default("自購"),
+        exchangePartner: z.string().nullable().optional(),
+        costPrice: z.number().nullable().optional(),
         allowExchange: z.boolean().default(true),
       })).mutation(async ({ input }) => {
         const id = await createCourse({
           ...input,
           startDate: input.startDate || undefined,
-          source: "自購",
         } as any);
         return { id };
       }),
@@ -211,6 +213,9 @@ export const appRouter = router({
         ytLink: z.string().nullable().optional(),
         cloudLink: z.string().nullable().optional(),
         isPublic: z.boolean().optional(),
+        source: z.enum(["自購", "交換"]).optional(),
+        exchangePartner: z.string().nullable().optional(),
+        costPrice: z.number().nullable().optional(),
         allowExchange: z.boolean().optional(),
       })).mutation(async ({ input }) => {
         const { id, startDate, ...rest } = input;
@@ -242,7 +247,7 @@ export const appRouter = router({
       }),
       updateStatus: adminProcedure.input(z.object({
         id: z.number(),
-        status: z.enum(["待處理", "待確認", "已付款", "已完成", "已取消"]),
+        status: z.enum(["待處理", "待確認", "已付款", "待交付", "已完成", "已取消"]),
       })).mutation(async ({ input }) => {
         if (input.status === "已付款") {
           await confirmPayment(input.id);
@@ -269,7 +274,7 @@ export const appRouter = router({
       }),
       updateStatus: adminProcedure.input(z.object({
         id: z.number(),
-        status: z.enum(["待審核", "確認交換", "婉拒"]),
+        status: z.enum(["待審核", "確認交換", "待交付", "婉拒"]),
         rejectReason: z.string().optional(),
       })).mutation(async ({ input }) => {
         await updateExchangeStatus(input.id, input.status, {

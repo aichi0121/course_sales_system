@@ -9,12 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
-const ORDER_STATUSES = ["待處理", "待確認", "已付款", "已完成", "已取消"] as const;
+const ORDER_STATUSES = ["待處理", "待確認", "已付款", "待交付", "已完成", "已取消"] as const;
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   "待處理": { label: "待處理", className: "bg-gray-500 text-white" },
   "待確認": { label: "待確認", className: "bg-yellow-500 text-white" },
   "已付款": { label: "已付款", className: "bg-green-600 text-white" },
+  "待交付": { label: "待交付", className: "bg-orange-500 text-white" },
   "已完成": { label: "已完成", className: "bg-blue-600 text-white" },
   "已取消": { label: "已取消", className: "bg-red-500 text-white" },
 };

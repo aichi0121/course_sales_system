@@ -1,4 +1,4 @@
-import { eq, desc, and, sql, like, or, gte, lte } from "drizzle-orm";
+import { eq, desc, and, sql, like, or, gte, lte, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -475,4 +475,34 @@ export async function getExchangeStats(since?: Date) {
   }
   const result = await query;
   return result[0] || { totalExchanges: 0, pendingCount: 0 };
+}
+
+// ─── Pending delivery helpers ───
+
+/** 取得某課程相關的「待交付」訂單數量 */
+export async function getPendingDeliveryOrdersByCourseId(courseId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Find orders that contain this course and are in 待交付 status
+  const items = await db.select({ orderId: orderItems.orderId }).from(orderItems).where(eq(orderItems.courseId, courseId));
+  if (items.length === 0) return [];
+  const orderIds = items.map(i => i.orderId);
+  return db.select().from(orders).where(
+    and(
+      eq(orders.status, "待交付"),
+      inArray(orders.id, orderIds)
+    )
+  );
+}
+
+/** 取得某課程相關的「待交付」交換數量 */
+export async function getPendingDeliveryExchangesByCourseId(courseId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(exchanges).where(
+    and(
+      eq(exchanges.status, "待交付"),
+      eq(exchanges.wantedCourseId, courseId)
+    )
+  );
 }

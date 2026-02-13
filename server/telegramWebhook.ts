@@ -151,7 +151,7 @@ async function handleAccept(parts: string[], chatId: string) {
     category: "自我成長",
     isPublic: false,
     source: "交換",
-    sourceTeacher: exchange.applicantName,
+    exchangePartner: exchange.applicantName,
     allowExchange: false,
   });
 
@@ -262,7 +262,7 @@ async function handleCourse(parts: string[], chatId: string) {
         return;
       }
       const lines = list.map(c =>
-        `• ${c.name} | NT$${c.price} | ${c.status} | ${c.isPublic ? "公開" : "隱藏"} | ${c.source === "交換" ? `來自${c.sourceTeacher}` : "自購"}`
+        `• ${c.name} | NT$${c.price} | ${c.status} | ${c.isPublic ? "公開" : "隱藏"} | ${c.source === "交換" ? `來自${c.exchangePartner}` : "自購"}`
       ).join("\n");
       await sendTelegramMessage(`📚 <b>課程清單</b>\n\n${lines}`, chatId);
       break;

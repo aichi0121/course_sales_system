@@ -2,6 +2,8 @@ import {
   getCoursesScheduledToday,
   getPendingOrders,
   getPendingExchanges,
+  getPendingDeliveryOrdersByCourseId,
+  getPendingDeliveryExchangesByCourseId,
   updateCourse,
 } from "./db";
 import {
@@ -49,8 +51,17 @@ async function runDailyCheck() {
     for (const course of todayCourses) {
       // Auto update status from 未開課 → 上線中
       await updateCourse(course.id, { status: "上線中" as any });
-      // Send TG notification
-      const msg = formatCourseOpeningReminder(course, 0, 0);
+
+      // Check pending delivery orders & exchanges for this course
+      const pendingDeliveryOrders = await getPendingDeliveryOrdersByCourseId(course.id);
+      const pendingDeliveryExchanges = await getPendingDeliveryExchangesByCourseId(course.id);
+
+      // Send TG notification with pending delivery counts
+      const msg = formatCourseOpeningReminder(
+        course,
+        pendingDeliveryOrders.length,
+        pendingDeliveryExchanges.length
+      );
       await sendTelegramMessage(msg);
     }
 

@@ -32,6 +32,7 @@ type CourseForm = {
   teacher: string;
   description: string;
   price: number;
+  costPrice: string;
   startDate: string;
   totalHours: string;
   status: typeof STATUSES[number];
@@ -43,15 +44,17 @@ type CourseForm = {
   ytLink: string;
   cloudLink: string;
   isPublic: boolean;
+  source: "自購" | "交換";
+  exchangePartner: string;
   allowExchange: boolean;
 };
 
 const emptyForm: CourseForm = {
-  name: "", teacher: "", description: "", price: 500,
+  name: "", teacher: "", description: "", price: 500, costPrice: "",
   startDate: "", totalHours: "", status: "未開課",
   platform: "", category: "自我成長", syllabus: "",
   originalUrl: "", imageUrl: "", ytLink: "", cloudLink: "",
-  isPublic: true, allowExchange: true,
+  isPublic: true, source: "自購", exchangePartner: "", allowExchange: true,
 };
 
 export default function AdminCourses() {
@@ -95,6 +98,9 @@ export default function AdminCourses() {
       ytLink: course.ytLink || "",
       cloudLink: course.cloudLink || "",
       isPublic: course.isPublic,
+      source: course.source || "自購",
+      exchangePartner: (course as any).exchangePartner || "",
+      costPrice: (course as any).costPrice != null ? String((course as any).costPrice) : "",
       allowExchange: course.allowExchange,
     });
     setDialogOpen(true);
@@ -113,6 +119,8 @@ export default function AdminCourses() {
       cloudLink: form.cloudLink || undefined,
       teacher: form.teacher || undefined,
       description: form.description || undefined,
+      costPrice: form.costPrice ? parseInt(form.costPrice) : null,
+      exchangePartner: form.exchangePartner || null,
     };
     if (editingId) {
       updateMutation.mutate({ id: editingId, ...payload } as any);
@@ -169,7 +177,10 @@ export default function AdminCourses() {
                       {course.teacher && `${course.teacher} · `}
                       {course.description || "無簡介"}
                     </p>
-                    <p className="text-sm font-medium text-primary mt-1">NT${course.price.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-primary mt-1">
+                      售價 NT${course.price.toLocaleString()}
+                      {(course as any).costPrice != null && <span className="text-muted-foreground ml-2">（成本 NT${(course as any).costPrice.toLocaleString()}）</span>}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
@@ -214,7 +225,7 @@ export default function AdminCourses() {
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>價格 (NT$)</Label>
+                <Label>售價 (NT$)</Label>
                 <Input type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: parseInt(e.target.value) || 0 }))} />
               </div>
               <div className="space-y-2">
@@ -267,6 +278,28 @@ export default function AdminCourses() {
 
             <div className="border-t pt-4">
               <p className="text-sm font-medium text-muted-foreground mb-3">以下欄位僅後台可見</p>
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div className="space-y-2">
+                  <Label>購入價格 (NT$)</Label>
+                  <Input type="number" value={form.costPrice} onChange={e => setForm(p => ({ ...p, costPrice: e.target.value }))} placeholder="您購買的成本價" />
+                </div>
+                <div className="space-y-2">
+                  <Label>課程來源</Label>
+                  <Select value={form.source} onValueChange={(v: any) => setForm(p => ({ ...p, source: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="自購">自購</SelectItem>
+                      <SelectItem value="交換">交換</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {form.source === "交換" && (
+                  <div className="space-y-2">
+                    <Label>交換對象</Label>
+                    <Input value={form.exchangePartner} onChange={e => setForm(p => ({ ...p, exchangePartner: e.target.value }))} placeholder="跟誰交換的" />
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>課程 YT 連結</Label>
