@@ -111,12 +111,15 @@ describe("Notification Formatters", () => {
       orderNumber: "ORD260101001",
       customerName: "測試客戶",
       items: [
-        { courseName: "投資理財入門", courseLink: "https://drive.google.com/test" },
+        { courseName: "投資理財入門", ytLink: "https://youtube.com/test", cloudLink: "https://drive.google.com/test" },
       ],
     });
     expect(msg).toContain("付款確認");
     expect(msg).toContain("測試客戶");
+    expect(msg).toContain("https://youtube.com/test");
     expect(msg).toContain("https://drive.google.com/test");
+    expect(msg).toContain("YT連結");
+    expect(msg).toContain("雲端連結");
   });
 
   it("should format exchange accept message correctly", async () => {
@@ -125,12 +128,16 @@ describe("Notification Formatters", () => {
       exchangeNumber: "EXC260101001",
       applicantName: "王老師",
       wantedCourseName: "投資理財入門",
-      wantedCourseLink: "https://example.com/course",
+      wantedCourseYtLink: "https://youtube.com/course",
+      wantedCourseCloudLink: "https://drive.google.com/course",
     });
     expect(msg).toContain("交換確認");
     expect(msg).toContain("王老師");
     expect(msg).toContain("投資理財入門");
-    expect(msg).toContain("https://example.com/course");
+    expect(msg).toContain("https://youtube.com/course");
+    expect(msg).toContain("https://drive.google.com/course");
+    expect(msg).toContain("YT連結");
+    expect(msg).toContain("雲端連結");
   });
 
   it("should format course opening reminder correctly", async () => {

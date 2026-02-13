@@ -139,11 +139,15 @@ export function formatCourseOpeningReminder(course: {
 export function formatPaidConfirmation(order: {
   orderNumber: string;
   customerName: string;
-  items: { courseName: string; courseLink?: string }[];
+  items: { courseName: string; ytLink?: string; cloudLink?: string }[];
 }) {
-  const courseLines = order.items.map((i, idx) =>
-    `${idx + 1}. ${i.courseName}\n   🔗 ${i.courseLink || "連結待設定"}`
-  ).join("\n\n");
+  const courseLines = order.items.map((i, idx) => {
+    const links: string[] = [];
+    if (i.ytLink) links.push(`   🎬 YT連結：${i.ytLink}`);
+    if (i.cloudLink) links.push(`   ☁️ 雲端連結：${i.cloudLink}`);
+    if (links.length === 0) links.push(`   🔗 連結待設定`);
+    return `${idx + 1}. ${i.courseName}\n${links.join("\n")}`;
+  }).join("\n\n");
 
   return `✅ 付款確認
 
@@ -163,8 +167,14 @@ export function formatExchangeAcceptMessage(exchange: {
   exchangeNumber: string;
   applicantName: string;
   wantedCourseName: string;
-  wantedCourseLink?: string;
+  wantedCourseYtLink?: string;
+  wantedCourseCloudLink?: string;
 }) {
+  const links: string[] = [];
+  if (exchange.wantedCourseYtLink) links.push(`🎬 YT連結：${exchange.wantedCourseYtLink}`);
+  if (exchange.wantedCourseCloudLink) links.push(`☁️ 雲端連結：${exchange.wantedCourseCloudLink}`);
+  if (links.length === 0) links.push(`🔗 連結待設定`);
+
   return `✅ 交換確認
 
 Hi ${exchange.applicantName}，
@@ -173,7 +183,7 @@ Hi ${exchange.applicantName}，
 
 以下是您想要的課程連結：
 📚 ${exchange.wantedCourseName}
-🔗 ${exchange.wantedCourseLink || "連結待設定"}
+${links.join("\n")}
 
 請提供您的課程給我們，謝謝！`;
 }

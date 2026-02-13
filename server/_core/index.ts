@@ -7,7 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { registerTelegramWebhook } from "../telegramWebhook";
+import { registerTelegramWebhook, autoSetupWebhook } from "../telegramWebhook";
 import { startCronJobs } from "../cronJobs";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -65,6 +65,12 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Auto-setup Telegram webhook in production
+    if (process.env.NODE_ENV === "production" && process.env.VITE_APP_URL) {
+      autoSetupWebhook(process.env.VITE_APP_URL).catch((err: any) => 
+        console.error("[Telegram] Auto webhook setup failed:", err)
+      );
+    }
   });
 }
 

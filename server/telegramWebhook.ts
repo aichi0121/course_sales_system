@@ -1,4 +1,5 @@
 import { Express, Request, Response } from "express";
+import axios from "axios";
 import {
   sendTelegramMessage,
   formatPaidConfirmation,
@@ -15,9 +16,77 @@ import {
   getCustomerById,
 } from "./db";
 
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "";
+// Read env vars lazily to ensure they are available when needed
+function getTelegramChatId() {
+  return process.env.TELEGRAM_CHAT_ID || "";
+}
+
+// Setup Telegram webhook automatically
+export async function autoSetupWebhook(baseUrl: string) {
+  return setupWebhook(baseUrl);
+}
+
+async function setupWebhook(baseUrl: string) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    console.log("[Telegram] Bot token not configured, skipping webhook setup");
+    return;
+  }
+  const webhookUrl = `${baseUrl}/api/telegram/webhook`;
+  try {
+    // First check current webhook
+    const infoRes = await axios.get(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+    const currentUrl = infoRes.data?.result?.url;
+    if (currentUrl === webhookUrl) {
+      console.log(`[Telegram] Webhook already set to ${webhookUrl}`);
+      return;
+    }
+    // Set new webhook
+    const res = await axios.post(`https://api.telegram.org/bot${token}/setWebhook`, {
+      url: webhookUrl,
+      allowed_updates: ["message"],
+    });
+    if (res.data?.ok) {
+      console.log(`[Telegram] Webhook set successfully: ${webhookUrl}`);
+    } else {
+      console.error("[Telegram] Failed to set webhook:", res.data);
+    }
+  } catch (error: any) {
+    console.error("[Telegram] Error setting webhook:", error?.response?.data || error.message);
+  }
+}
 
 export function registerTelegramWebhook(app: Express) {
+  // API endpoint to manually set webhook
+  app.post("/api/telegram/setup-webhook", async (req: Request, res: Response) => {
+    try {
+      const { baseUrl } = req.body;
+      if (!baseUrl) {
+        res.status(400).json({ error: "baseUrl is required" });
+        return;
+      }
+      await setupWebhook(baseUrl);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // API endpoint to check webhook status
+  app.get("/api/telegram/webhook-info", async (_req: Request, res: Response) => {
+    try {
+      const token = process.env.TELEGRAM_BOT_TOKEN;
+      if (!token) {
+        res.json({ configured: false });
+        return;
+      }
+      const infoRes = await axios.get(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+      res.json({ configured: true, ...infoRes.data?.result });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/telegram/webhook", async (req: Request, res: Response) => {
     try {
       const update = req.body;
@@ -30,7 +99,7 @@ export function registerTelegramWebhook(app: Express) {
       const text = update.message.text.trim();
 
       // Only respond to the admin chat
-      if (chatId !== TELEGRAM_CHAT_ID) {
+      if (chatId !== getTelegramChatId()) {
         await sendTelegramMessage("⚠️ 您沒有權限使用此機器人。", chatId);
         res.sendStatus(200);
         return;
@@ -107,6 +176,11 @@ async function handlePaid(parts: string[], chatId: string) {
     await sendTelegramMessage(`❌ 找不到訂單 ${orderNumber}`, chatId);
     return;
   }
+  // Prevent duplicate confirmation
+  if (order.status === "已付款" || order.status === "已完成") {
+    await sendTelegramMessage(`⚠️ 訂單 ${orderNumber} 已經確認過收款了（目前狀態：${order.status}）`, chatId);
+    return;
+  }
   await confirmPayment(order.id);
   const items = await getOrderItems(order.id);
   const itemsWithLinks = [];
@@ -114,7 +188,8 @@ async function handlePaid(parts: string[], chatId: string) {
     const course = await getCourseById(item.courseId);
     itemsWithLinks.push({
       courseName: item.courseName,
-      courseLink: course?.cloudLink || course?.originalUrl || undefined,
+      ytLink: course?.ytLink || undefined,
+      cloudLink: course?.cloudLink || undefined,
     });
   }
   const customer = await getCustomerById(order.customerId);
@@ -160,7 +235,8 @@ async function handleAccept(parts: string[], chatId: string) {
     exchangeNumber: exchange.exchangeNumber,
     applicantName: exchange.applicantName,
     wantedCourseName: exchange.wantedCourseName,
-    wantedCourseLink: wantedCourse?.cloudLink || wantedCourse?.originalUrl || undefined,
+    wantedCourseYtLink: wantedCourse?.ytLink || undefined,
+    wantedCourseCloudLink: wantedCourse?.cloudLink || undefined,
   });
   await sendTelegramMessage(`✅ 已接受交換申請 ${exchangeNumber}！\n對方課程「${exchange.offeredCourseName}」已新增至課程清單（隱藏）。\n\n📋 以下訊息可直接複製貼到對方 LINE：\n\n<code>${escapeHtml(msg)}</code>`, chatId);
 }
