@@ -1,0 +1,178 @@
+{
+  "query": "DESCRIBE courses;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2MszHx5kdzDBeHj.root --database dXUckrobvf8MpmEcmPvpzD --execute DESCRIBE courses;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "name",
+      "Type": "varchar(255)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "teacher",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "description",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "price",
+      "Type": "int(11)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "scheduledAt",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "totalHours",
+      "Type": "varchar(50)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "courseStatus",
+      "Type": "enum('已完結','上線中','未開課')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "未開課",
+      "Extra": ""
+    },
+    {
+      "Field": "platform",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "category",
+      "Type": "enum('理財｜投資','商業｜工作學','內容創作｜行銷','自我成長','人際關係','數位工具｜AI','語言｜學習','健康｜身心靈','美妝｜保養','居家生活','法律｜知識')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "syllabus",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "originalUrl",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "imageUrl",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "ytLink",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "cloudLink",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "isPublic",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "source",
+      "Type": "enum('自購','交換')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "自購",
+      "Extra": ""
+    },
+    {
+      "Field": "sourceTeacher",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "allowExchange",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "1",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint(11)\tNO\tPRI\tNULL\tauto_increment\nname\tvarchar(255)\tNO\t\tNULL\t\nteacher\tvarchar(255)\tYES\t\tNULL\t\ndescription\ttext\tYES\t\tNULL\t\nprice\tint(11)\tNO\t\t0\t\nscheduledAt\ttimestamp\tYES\t\tNULL\t\ntotalHours\tvarchar(50)\tYES\t\tNULL\t\ncourseStatus\tenum('已完結','上線中','未開課')\tNO\t\t未開課\t\nplatform\tvarchar(255)\tYES\t\tNULL\t\ncategory\tenum('理財｜投資','商業｜工作學','內容創作｜行銷','自我成長','人際關係','數位工具｜AI','語言｜學習','健康｜身心靈','美妝｜保養','居家生活','法律｜知識')\tNO\t\tNULL\t\nsyllabus\ttext\tYES\t\tNULL\t\noriginalUrl\ttext\tYES\t\tNULL\t\nimageUrl\ttext\tYES\t\tNULL\t\nytLink\ttext\tYES\t\tNULL\t\ncloudLink\ttext\tYES\t\tNULL\t\nisPublic\ttinyint(1)\tNO\t\t1\t\nsource\tenum('自購','交換')\tNO\t\t自購\t\nsourceTeacher\tvarchar(255)\tYES\t\tNULL\t\nallowExchange\ttinyint(1)\tNO\t\t1\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 1520
+}

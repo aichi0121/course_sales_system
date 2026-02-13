@@ -1,0 +1,73 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'courses' ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2MszHx5kdzDBeHj.root --database dXUckrobvf8MpmEcmPvpzD --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'courses' ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "name"
+    },
+    {
+      "COLUMN_NAME": "teacher"
+    },
+    {
+      "COLUMN_NAME": "description"
+    },
+    {
+      "COLUMN_NAME": "price"
+    },
+    {
+      "COLUMN_NAME": "scheduledAt"
+    },
+    {
+      "COLUMN_NAME": "totalHours"
+    },
+    {
+      "COLUMN_NAME": "courseStatus"
+    },
+    {
+      "COLUMN_NAME": "platform"
+    },
+    {
+      "COLUMN_NAME": "category"
+    },
+    {
+      "COLUMN_NAME": "syllabus"
+    },
+    {
+      "COLUMN_NAME": "originalUrl"
+    },
+    {
+      "COLUMN_NAME": "imageUrl"
+    },
+    {
+      "COLUMN_NAME": "ytLink"
+    },
+    {
+      "COLUMN_NAME": "cloudLink"
+    },
+    {
+      "COLUMN_NAME": "isPublic"
+    },
+    {
+      "COLUMN_NAME": "source"
+    },
+    {
+      "COLUMN_NAME": "sourceTeacher"
+    },
+    {
+      "COLUMN_NAME": "allowExchange"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nname\nteacher\ndescription\nprice\nscheduledAt\ntotalHours\ncourseStatus\nplatform\ncategory\nsyllabus\noriginalUrl\nimageUrl\nytLink\ncloudLink\nisPublic\nsource\nsourceTeacher\nallowExchange\ncreatedAt\nupdatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 1554
+}

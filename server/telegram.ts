@@ -36,45 +36,47 @@ export async function sendTelegramMessage(text: string, chatId?: string): Promis
 export function formatNewOrderNotification(order: {
   orderNumber: string;
   customerName: string;
+  customerLineName?: string;
   customerLineId?: string;
-  customerPhone?: string;
   items: { courseName: string; price: number }[];
   totalAmount: number;
   discountAmount: number;
   finalAmount: number;
+  promoName?: string;
 }) {
   const itemLines = order.items.map((i, idx) => `  ${idx + 1}. ${i.courseName} - NT$${i.price}`).join("\n");
+  const promoLine = order.promoName ? `\n🎁 優惠方案：${order.promoName}` : "";
   return `🛒 <b>新訂單通知</b>
 
 📋 訂單編號：${order.orderNumber}
 👤 客戶：${order.customerName}
-📱 LINE：${order.customerLineId || "未提供"}
-📞 電話：${order.customerPhone || "未提供"}
+📱 LINE 名稱：${order.customerLineName || "未提供"}
+🆔 LINE ID：${order.customerLineId || "未提供"}
 
-📦 訂單內容：
+📦 訂單內容（共 ${order.items.length} 門）：
 ${itemLines}
 
-💰 小計：NT$${order.totalAmount}
+💰 原價小計：NT$${order.totalAmount}${promoLine}
 🎁 折扣：-NT$${order.discountAmount}
 💵 應付金額：NT$${order.finalAmount}
 
 ⏰ 時間：${new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })}
-📌 狀態：待付款`;
+📌 狀態：待處理`;
 }
 
 export function formatPaymentNotification(order: {
   orderNumber: string;
   customerName: string;
+  customerLineName?: string;
   customerLineId?: string;
-  customerPhone?: string;
   finalAmount: number;
 }) {
   return `💳 <b>付款通知</b>
 
 📋 訂單編號：${order.orderNumber}
 👤 客戶：${order.customerName}
-📱 LINE：${order.customerLineId || "未提供"}
-📞 電話：${order.customerPhone || "未提供"}
+📱 LINE 名稱：${order.customerLineName || "未提供"}
+🆔 LINE ID：${order.customerLineId || "未提供"}
 💵 金額：NT$${order.finalAmount}
 
 ⏰ 付款通知時間：${new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })}
@@ -86,29 +88,24 @@ export function formatPaymentNotification(order: {
 export function formatExchangeNotification(exchange: {
   exchangeNumber: string;
   applicantName: string;
+  applicantLineName?: string;
   applicantLineId?: string;
-  applicantPhone?: string;
   wantedCourseName: string;
   offeredCourseName: string;
   offeredCourseDescription?: string;
-  provideMethod: string;
+  exchangeMethod: string;
 }) {
-  const methodMap: Record<string, string> = {
-    account_password: "帳號密碼",
-    original_file: "原檔",
-    recording: "錄影",
-  };
   return `🔄 <b>課程交換申請</b>
 
 📋 申請編號：${exchange.exchangeNumber}
 👤 申請人：${exchange.applicantName}
-📱 LINE：${exchange.applicantLineId || "未提供"}
-📞 電話：${exchange.applicantPhone || "未提供"}
+📱 LINE 名稱：${exchange.applicantLineName || "未提供"}
+🆔 LINE ID：${exchange.applicantLineId || "未提供"}
 
 📚 想要的課程：${exchange.wantedCourseName}
 🎓 提供的課程：${exchange.offeredCourseName}
 📝 課程簡介：${exchange.offeredCourseDescription || "未提供"}
-📦 提供方式：${methodMap[exchange.provideMethod] || exchange.provideMethod}
+📦 交換方式：${exchange.exchangeMethod}
 
 ⏰ 申請時間：${new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })}
 📌 狀態：待審核

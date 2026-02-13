@@ -1,0 +1,13 @@
+{
+  "query": "SELECT GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION) as cols FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'courses';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2MszHx5kdzDBeHj.root --database dXUckrobvf8MpmEcmPvpzD --execute SELECT GROUP_CONCAT(COLUMN_NAME ORDER BY ORDINAL_POSITION) as cols FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'courses';",
+  "rows": [
+    {
+      "cols": "id,name,teacher,description,price,scheduledAt,totalHours,courseStatus,platform,category,syllabus,originalUrl,imageUrl,ytLink,cloudLink,isPublic,source,sourceTeacher,allowExchange,createdAt,updatedAt"
+    }
+  ],
+  "messages": [],
+  "stdout": "cols\nid,name,teacher,description,price,scheduledAt,totalHours,courseStatus,platform,category,syllabus,originalUrl,imageUrl,ytLink,cloudLink,isPublic,source,sourceTeacher,allowExchange,createdAt,updatedAt\n",
+  "stderr": "",
+  "execution_time_ms": 1523
+}

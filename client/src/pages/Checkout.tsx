@@ -14,13 +14,13 @@ import { toast } from "sonner";
 type CheckoutStep = "info" | "confirm" | "payment" | "done";
 
 export default function Checkout() {
-  const { items, totalAmount, discountAmount, finalAmount, clearCart, itemCount } = useCart();
+  const { items, totalAmount, discountAmount, finalAmount, discountInfo, clearCart, itemCount } = useCart();
   const [, setLocation] = useLocation();
   const [step, setStep] = useState<CheckoutStep>("info");
   const [form, setForm] = useState({
     name: "",
+    lineName: "",
     lineId: "",
-    phone: "",
     email: "",
   });
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
@@ -95,12 +95,12 @@ export default function Checkout() {
                 <Input id="name" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="請輸入姓名" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lineId">LINE ID *</Label>
-                <Input id="lineId" value={form.lineId} onChange={e => setForm(p => ({ ...p, lineId: e.target.value }))} placeholder="請輸入 LINE ID" />
+                <Label htmlFor="lineName">LINE 名稱 *</Label>
+                <Input id="lineName" value={form.lineName} onChange={e => setForm(p => ({ ...p, lineName: e.target.value }))} placeholder="請輸入 LINE 名稱" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">手機號碼 *</Label>
-                <Input id="phone" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="請輸入手機號碼" />
+                <Label htmlFor="lineId">LINE ID</Label>
+                <Input id="lineId" value={form.lineId} onChange={e => setForm(p => ({ ...p, lineId: e.target.value }))} placeholder="請輸入 LINE ID（選填）" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email（選填）</Label>
@@ -129,7 +129,7 @@ export default function Checkout() {
 
               <Button
                 className="w-full"
-                disabled={!form.name || !form.lineId || !form.phone}
+                disabled={!form.name || !form.lineName}
                 onClick={() => setStep("confirm")}
               >
                 下一步：確認訂單
@@ -148,8 +148,8 @@ export default function Checkout() {
               <CardContent className="space-y-4">
                 <div className="space-y-2 text-sm">
                   <p><span className="text-muted-foreground">姓名：</span>{form.name}</p>
-                  <p><span className="text-muted-foreground">LINE ID：</span>{form.lineId}</p>
-                  <p><span className="text-muted-foreground">手機：</span>{form.phone}</p>
+                  <p><span className="text-muted-foreground">LINE 名稱：</span>{form.lineName}</p>
+                  {form.lineId && <p><span className="text-muted-foreground">LINE ID：</span>{form.lineId}</p>}
                   {form.email && <p><span className="text-muted-foreground">Email：</span>{form.email}</p>}
                   <p><span className="text-muted-foreground">付款方式：</span>{paymentMethodLabels[paymentMethod]}</p>
                 </div>
@@ -172,11 +172,16 @@ export default function Checkout() {
                     <span>小計（{itemCount} 門）</span>
                     <span>NT${totalAmount.toLocaleString()}</span>
                   </div>
-                  {discountAmount > 0 && (
+                  {discountInfo.promoName && (
                     <div className="flex justify-between text-sm text-green-600">
-                      <span>折扣</span>
+                      <span>優惠（{discountInfo.promoName}）</span>
                       <span>-NT${discountAmount.toLocaleString()}</span>
                     </div>
+                  )}
+                  {discountInfo.hasPremium && (
+                    <p className="text-xs text-amber-600">
+                      含高價課程，金額為預估值，最終金額以管理員確認為準
+                    </p>
                   )}
                   <div className="flex justify-between font-bold text-lg pt-2">
                     <span>應付金額</span>
@@ -196,9 +201,8 @@ export default function Checkout() {
                 onClick={() => {
                   createOrder.mutate({
                     customerName: form.name,
-                    customerLineId: form.lineId,
-                    customerPhone: form.phone,
-                    customerEmail: form.email || undefined,
+                    customerLineName: form.lineName || undefined,
+                    customerLineId: form.lineId || undefined,
                     paymentMethod,
                     items: items.map(i => ({
                       courseId: i.courseId,

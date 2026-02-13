@@ -20,20 +20,20 @@ export default function AdminCustomers() {
     { enabled: !!detailId }
   );
 
-  const updateNotes = trpc.admin.customers.updateNotes.useMutation({
+  const updateCustomer = trpc.admin.customers.update.useMutation({
     onSuccess: () => {
       utils.admin.customers.list.invalidate();
       utils.admin.customers.getById.invalidate();
       toast.success("備註已更新");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err: any) => toast.error(err.message),
   });
 
   const filteredCustomers = customers?.filter(c => {
     if (!searchKeyword) return true;
     const kw = searchKeyword.toLowerCase();
     return c.name.toLowerCase().includes(kw) ||
-      c.phone?.toLowerCase().includes(kw) ||
+      c.lineName?.toLowerCase().includes(kw) ||
       c.lineId?.toLowerCase().includes(kw);
   });
 
@@ -49,7 +49,7 @@ export default function AdminCustomers() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-10"
-          placeholder="搜尋客戶（姓名、電話、LINE ID）"
+          placeholder="搜尋客戶（姓名、LINE 名稱、LINE ID）"
           value={searchKeyword}
           onChange={e => setSearchKeyword(e.target.value)}
         />
@@ -68,8 +68,8 @@ export default function AdminCustomers() {
               <div className="flex-1 min-w-0">
                 <p className="font-medium">{customer.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  {customer.lineId && `LINE: ${customer.lineId}`}
-                  {customer.phone && ` · ${customer.phone}`}
+                  {customer.lineName && `LINE: ${customer.lineName}`}
+                  {customer.lineId && ` · ID: ${customer.lineId}`}
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">{new Date(customer.createdAt).toLocaleDateString("zh-TW")}</p>
@@ -97,16 +97,16 @@ export default function AdminCustomers() {
                   <p className="font-medium">{customerDetail.name}</p>
                 </div>
                 <div>
+                  <p className="text-muted-foreground">LINE 名稱</p>
+                  <p>{customerDetail.lineName || "未提供"}</p>
+                </div>
+                <div>
                   <p className="text-muted-foreground">LINE ID</p>
                   <p>{customerDetail.lineId || "未提供"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">手機</p>
-                  <p>{customerDetail.phone || "未提供"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Email</p>
-                  <p>{customerDetail.email || "未提供"}</p>
+                  <p className="text-muted-foreground">建立時間</p>
+                  <p>{new Date(customerDetail.createdAt).toLocaleDateString("zh-TW")}</p>
                 </div>
               </div>
 
@@ -142,10 +142,10 @@ export default function AdminCustomers() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDetailId(null)}>關閉</Button>
             <Button
-              onClick={() => detailId && updateNotes.mutate({ id: detailId, notes })}
-              disabled={updateNotes.isPending}
+              onClick={() => detailId && updateCustomer.mutate({ id: detailId, notes })}
+              disabled={updateCustomer.isPending}
             >
-              {updateNotes.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {updateCustomer.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               儲存備註
             </Button>
           </DialogFooter>

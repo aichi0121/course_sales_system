@@ -63,7 +63,7 @@ async function runDailyCheck() {
 
     if (staleOrders.length > 0) {
       const lines = staleOrders.map(o =>
-        `  • ${o.orderNumber} | NT$${o.finalAmount} | ${o.status === "awaiting_confirmation" ? "待確認" : "待付款"} | ${new Date(o.createdAt).toLocaleDateString("zh-TW")}`
+        `  • ${o.orderNumber} | NT$${o.finalAmount} | ${o.status === "待確認" ? "待確認" : "待處理"} | ${new Date(o.createdAt).toLocaleDateString("zh-TW")}`
       ).join("\n");
       await sendTelegramMessage(`⏰ <b>待處理訂單提醒</b>\n\n以下訂單已超過 24 小時未處理：\n${lines}`);
     }

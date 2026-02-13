@@ -21,11 +21,11 @@ export default function Exchange() {
   const [result, setResult] = useState<{ exchangeNumber: string } | null>(null);
   const [form, setForm] = useState({
     name: "",
+    lineName: "",
     lineId: "",
-    phone: "",
     offeredCourseName: "",
     offeredCourseDescription: "",
-    provideMethod: "account_password" as "account_password" | "original_file" | "recording",
+    exchangeMethod: "帳號" as "帳號" | "下載原檔" | "錄影",
   });
 
   const createExchange = trpc.exchange.create.useMutation({
@@ -55,7 +55,7 @@ export default function Exchange() {
                 申請編號：<span className="font-mono font-medium">{result.exchangeNumber}</span>
               </p>
               <div className="bg-muted p-4 rounded-lg text-sm space-y-2">
-                <p>我們會在 1-3 天內審核您的申請。</p>
+                <p>我們會盡快審核您的申請。</p>
                 <p>審核結果將透過 LINE 通知您。</p>
               </div>
               <Button
@@ -107,34 +107,34 @@ export default function Exchange() {
               <Input id="name" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="請輸入姓名" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lineId">LINE ID *</Label>
-              <Input id="lineId" value={form.lineId} onChange={e => setForm(p => ({ ...p, lineId: e.target.value }))} placeholder="請輸入 LINE ID" />
+              <Label htmlFor="lineName">LINE 名稱 *</Label>
+              <Input id="lineName" value={form.lineName} onChange={e => setForm(p => ({ ...p, lineName: e.target.value }))} placeholder="請輸入 LINE 名稱" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">手機號碼 *</Label>
-              <Input id="phone" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="請輸入手機號碼" />
+              <Label htmlFor="lineId">LINE ID</Label>
+              <Input id="lineId" value={form.lineId} onChange={e => setForm(p => ({ ...p, lineId: e.target.value }))} placeholder="請輸入 LINE ID（選填）" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="offeredCourse">您想交換的課程名稱 *</Label>
+              <Label htmlFor="offeredCourse">您要交換給我的課程名稱 *</Label>
               <Input id="offeredCourse" value={form.offeredCourseName} onChange={e => setForm(p => ({ ...p, offeredCourseName: e.target.value }))} placeholder="請輸入您要提供的課程名稱" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">課程簡介</Label>
+              <Label htmlFor="description">課程簡介（選填）</Label>
               <Textarea id="description" value={form.offeredCourseDescription} onChange={e => setForm(p => ({ ...p, offeredCourseDescription: e.target.value }))} placeholder="請簡述您的課程內容，方便我們評估" rows={4} />
             </div>
             <div className="space-y-3">
-              <Label>提供方式 *</Label>
-              <RadioGroup value={form.provideMethod} onValueChange={(v: any) => setForm(p => ({ ...p, provideMethod: v }))}>
+              <Label>交換方式 *</Label>
+              <RadioGroup value={form.exchangeMethod} onValueChange={(v: any) => setForm(p => ({ ...p, exchangeMethod: v }))}>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="account_password" id="ap" />
-                  <Label htmlFor="ap">帳號密碼（課程平台帳號）</Label>
+                  <RadioGroupItem value="帳號" id="ap" />
+                  <Label htmlFor="ap">帳號（課程平台帳號）</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="original_file" id="of" />
-                  <Label htmlFor="of">原檔（影片檔案）</Label>
+                  <RadioGroupItem value="下載原檔" id="of" />
+                  <Label htmlFor="of">下載原檔（影片檔案）</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="recording" id="rec" />
+                  <RadioGroupItem value="錄影" id="rec" />
                   <Label htmlFor="rec">錄影（重新錄製）</Label>
                 </div>
               </RadioGroup>
@@ -142,17 +142,17 @@ export default function Exchange() {
 
             <Button
               className="w-full"
-              disabled={!form.name || !form.lineId || !form.phone || !form.offeredCourseName || createExchange.isPending}
+              disabled={!form.name || !form.lineName || !form.offeredCourseName || createExchange.isPending}
               onClick={() => {
                 createExchange.mutate({
                   applicantName: form.name,
-                  applicantLineId: form.lineId,
-                  applicantPhone: form.phone,
-                  wantedCourseId: courseId,
-                  wantedCourseName: courseName,
+                  applicantLineName: form.lineName,
+                  applicantLineId: form.lineId || undefined,
+                  wantedCourseId: courseId || undefined,
+                  wantedCourseName: courseName || undefined,
                   offeredCourseName: form.offeredCourseName,
                   offeredCourseDescription: form.offeredCourseDescription || undefined,
-                  provideMethod: form.provideMethod,
+                  exchangeMethod: form.exchangeMethod,
                 });
               }}
             >

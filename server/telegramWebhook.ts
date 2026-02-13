@@ -114,7 +114,7 @@ async function handlePaid(parts: string[], chatId: string) {
     const course = await getCourseById(item.courseId);
     itemsWithLinks.push({
       courseName: item.courseName,
-      courseLink: course?.link || undefined,
+      courseLink: course?.cloudLink || course?.originalUrl || undefined,
     });
   }
   const customer = await getCustomerById(order.customerId);
@@ -125,7 +125,6 @@ async function handlePaid(parts: string[], chatId: string) {
   });
   await sendTelegramMessage(`✅ 訂單 ${orderNumber} 已確認收款！\n\n📋 以下訊息可直接複製貼到客戶 LINE：\n\n<code>${escapeHtml(msg)}</code>`, chatId);
 
-  // Show today stats
   const todayStats = await getOrderStats(getStartOfDay());
   await sendTelegramMessage(`📊 今日統計：訂單 ${todayStats.totalOrders} 筆，收入 NT$${todayStats.totalRevenue}`, chatId);
 }
@@ -141,16 +140,17 @@ async function handleAccept(parts: string[], chatId: string) {
     await sendTelegramMessage(`❌ 找不到交換申請 ${exchangeNumber}`, chatId);
     return;
   }
-  await updateExchangeStatus(exchange.id, "accepted");
+  await updateExchangeStatus(exchange.id, "確認交換", { completedAt: new Date() } as any);
 
   // Auto-add the offered course as hidden
   await createCourse({
     name: exchange.offeredCourseName,
     description: exchange.offeredCourseDescription || "",
     price: 0,
-    status: "completed",
+    status: "已完結",
+    category: "自我成長",
     isPublic: false,
-    source: "exchange",
+    source: "交換",
     sourceTeacher: exchange.applicantName,
     allowExchange: false,
   });
@@ -160,7 +160,7 @@ async function handleAccept(parts: string[], chatId: string) {
     exchangeNumber: exchange.exchangeNumber,
     applicantName: exchange.applicantName,
     wantedCourseName: exchange.wantedCourseName,
-    wantedCourseLink: wantedCourse?.link || undefined,
+    wantedCourseLink: wantedCourse?.cloudLink || wantedCourse?.originalUrl || undefined,
   });
   await sendTelegramMessage(`✅ 已接受交換申請 ${exchangeNumber}！\n對方課程「${exchange.offeredCourseName}」已新增至課程清單（隱藏）。\n\n📋 以下訊息可直接複製貼到對方 LINE：\n\n<code>${escapeHtml(msg)}</code>`, chatId);
 }
@@ -177,7 +177,7 @@ async function handleReject(parts: string[], chatId: string) {
     await sendTelegramMessage(`❌ 找不到交換申請 ${exchangeNumber}`, chatId);
     return;
   }
-  await updateExchangeStatus(exchange.id, "rejected", { rejectReason: reason } as any);
+  await updateExchangeStatus(exchange.id, "婉拒", { rejectReason: reason } as any);
 
   const msg = formatExchangeRejectMessage({
     exchangeNumber: exchange.exchangeNumber,
@@ -190,20 +190,18 @@ async function handleReject(parts: string[], chatId: string) {
 async function handleReceived(parts: string[], chatId: string) {
   const exchangeNumber = parts[1];
   if (!exchangeNumber) {
-    await sendTelegramMessage("⚠️ 用法：/received [交換編號] [課程資訊]", chatId);
+    await sendTelegramMessage("⚠️ 用法：/received [交換編號]", chatId);
     return;
   }
-  const courseInfo = parts.slice(2).join(" ");
   const exchange = await getExchangeByNumber(exchangeNumber);
   if (!exchange) {
     await sendTelegramMessage(`❌ 找不到交換申請 ${exchangeNumber}`, chatId);
     return;
   }
-  await updateExchangeStatus(exchange.id, "completed", {
-    courseCredentials: courseInfo,
+  await updateExchangeStatus(exchange.id, "確認交換", {
     completedAt: new Date(),
   } as any);
-  await sendTelegramMessage(`✅ 交換 ${exchangeNumber} 已完成！課程資訊已記錄。`, chatId);
+  await sendTelegramMessage(`✅ 交換 ${exchangeNumber} 已完成！`, chatId);
 }
 
 async function handleExchange(parts: string[], chatId: string) {
@@ -237,18 +235,24 @@ async function handleCourse(parts: string[], chatId: string) {
   const sub = parts[1]?.toLowerCase();
   switch (sub) {
     case "add": {
-      // /course add [名稱] [價格] [連結] [狀態]
+      // /course add [名稱] [價格] [類別]
       const name = parts[2];
-      const price = parseInt(parts[3]) || 0;
-      const link = parts[4] || "";
-      const statusMap: Record<string, string> = { "已完結": "completed", "上線中": "ongoing", "未開課": "upcoming" };
-      const status = statusMap[parts[5]] || "completed";
+      const price = parseInt(parts[3]) || 500;
+      const category = parts[4] || "自我成長";
       if (!name) {
-        await sendTelegramMessage("⚠️ 用法：/course add [名稱] [價格] [連結] [狀態]", chatId);
+        await sendTelegramMessage("⚠️ 用法：/course add [名稱] [價格] [類別]", chatId);
         return;
       }
-      await createCourse({ name, price, link, status: status as any, isPublic: true, source: "self", allowExchange: true });
-      await sendTelegramMessage(`✅ 課程「${name}」已新增！價格 NT$${price}`, chatId);
+      await createCourse({
+        name,
+        price,
+        category: category as any,
+        status: "上線中",
+        isPublic: true,
+        source: "自購",
+        allowExchange: true,
+      });
+      await sendTelegramMessage(`✅ 課程「${name}」已新增！價格 NT$${price}，類別：${category}`, chatId);
       break;
     }
     case "list": {
@@ -257,38 +261,24 @@ async function handleCourse(parts: string[], chatId: string) {
         await sendTelegramMessage("📭 目前沒有課程。", chatId);
         return;
       }
-      const statusMap: Record<string, string> = { completed: "已完結", ongoing: "上線中", upcoming: "未開課" };
       const lines = list.map(c =>
-        `• ${c.name} | NT$${c.price} | ${statusMap[c.status] || c.status} | ${c.isPublic ? "公開" : "隱藏"} | ${c.source === "exchange" ? `來自${c.sourceTeacher}` : "自有"}`
+        `• ${c.name} | NT$${c.price} | ${c.status} | ${c.isPublic ? "公開" : "隱藏"} | ${c.source === "交換" ? `來自${c.sourceTeacher}` : "自購"}`
       ).join("\n");
       await sendTelegramMessage(`📚 <b>課程清單</b>\n\n${lines}`, chatId);
       break;
     }
     case "status": {
       const name = parts[2];
-      const statusMap: Record<string, string> = { "已完結": "completed", "上線中": "ongoing", "未開課": "upcoming" };
-      const newStatus = statusMap[parts[3]];
-      if (!name || !newStatus) {
+      const newStatus = parts[3];
+      const validStatuses = ["已完結", "上線中", "未開課"];
+      if (!name || !newStatus || !validStatuses.includes(newStatus)) {
         await sendTelegramMessage("⚠️ 用法：/course status [名稱] [已完結/上線中/未開課]", chatId);
         return;
       }
       const course = await getCourseByName(name);
       if (!course) { await sendTelegramMessage(`❌ 找不到課程「${name}」`, chatId); return; }
       await updateCourse(course.id, { status: newStatus as any });
-      await sendTelegramMessage(`✅ 課程「${name}」狀態已更新為「${parts[3]}」`, chatId);
-      break;
-    }
-    case "link": {
-      const name = parts[2];
-      const link = parts[3];
-      if (!name || !link) {
-        await sendTelegramMessage("⚠️ 用法：/course link [名稱] [新連結]", chatId);
-        return;
-      }
-      const course = await getCourseByName(name);
-      if (!course) { await sendTelegramMessage(`❌ 找不到課程「${name}」`, chatId); return; }
-      await updateCourse(course.id, { link });
-      await sendTelegramMessage(`✅ 課程「${name}」連結已更新`, chatId);
+      await sendTelegramMessage(`✅ 課程「${name}」狀態已更新為「${newStatus}」`, chatId);
       break;
     }
     case "schedule": {
@@ -312,7 +302,7 @@ async function handleCourse(parts: string[], chatId: string) {
       }
       const course = await getCourseByName(name);
       if (!course) { await sendTelegramMessage(`❌ 找不到課程「${name}」`, chatId); return; }
-      await updateCourse(course.id, { status: "ongoing" });
+      await updateCourse(course.id, { status: "上線中" as any });
       await sendTelegramMessage(`✅ 課程「${name}」已更新為上線中！`, chatId);
       break;
     }
@@ -347,7 +337,7 @@ async function handleCourse(parts: string[], chatId: string) {
       break;
     }
     default:
-      await sendTelegramMessage("⚠️ 課程指令：add, list, status, link, schedule, open, upcoming, publish, hide", chatId);
+      await sendTelegramMessage("⚠️ 課程指令：add, list, status, schedule, open, upcoming, publish, hide", chatId);
   }
 }
 
@@ -362,20 +352,14 @@ async function handleCheck(parts: string[], chatId: string) {
   if (order) {
     const items = await getOrderItems(order.id);
     const customer = await getCustomerById(order.customerId);
-    const statusMap: Record<string, string> = {
-      pending: "待付款", awaiting_confirmation: "待確認", paid: "已付款", completed: "已完成", cancelled: "已取消"
-    };
     const itemLines = items.map(i => `  • ${i.courseName} NT$${i.price}`).join("\n");
-    await sendTelegramMessage(`📋 <b>訂單詳情</b>\n\n編號：${order.orderNumber}\n客戶：${customer?.name || "未知"}\nLINE：${customer?.lineId || "未提供"}\n電話：${customer?.phone || "未提供"}\n\n課程：\n${itemLines}\n\n金額：NT$${order.finalAmount}\n狀態：${statusMap[order.status] || order.status}\n下單時間：${new Date(order.createdAt).toLocaleString("zh-TW")}`, chatId);
+    await sendTelegramMessage(`📋 <b>訂單詳情</b>\n\n編號：${order.orderNumber}\n客戶：${customer?.name || "未知"}\nLINE 名稱：${customer?.lineName || "未提供"}\nLINE ID：${customer?.lineId || "未提供"}\n\n課程：\n${itemLines}\n\n原價：NT$${order.totalAmount}\n折扣：-NT$${order.discountAmount}\n應付：NT$${order.finalAmount}\n狀態：${order.status}\n下單時間：${new Date(order.createdAt).toLocaleString("zh-TW")}`, chatId);
     return;
   }
   // Try exchange
   const exchange = await getExchangeByNumber(number);
   if (exchange) {
-    const statusMap: Record<string, string> = {
-      pending: "待審核", accepted: "已接受", rejected: "已拒絕", awaiting_course: "待收課程", completed: "已完成"
-    };
-    await sendTelegramMessage(`📋 <b>交換申請詳情</b>\n\n編號：${exchange.exchangeNumber}\n申請人：${exchange.applicantName}\nLINE：${exchange.applicantLineId || "未提供"}\n\n想要：${exchange.wantedCourseName}\n提供：${exchange.offeredCourseName}\n方式：${exchange.provideMethod}\n\n狀態：${statusMap[exchange.status] || exchange.status}\n申請時間：${new Date(exchange.createdAt).toLocaleString("zh-TW")}`, chatId);
+    await sendTelegramMessage(`📋 <b>交換申請詳情</b>\n\n編號：${exchange.exchangeNumber}\n申請人：${exchange.applicantName}\nLINE 名稱：${exchange.applicantLineName || "未提供"}\nLINE ID：${exchange.applicantLineId || "未提供"}\n\n想要：${exchange.wantedCourseName}\n提供：${exchange.offeredCourseName}\n方式：${exchange.provideMethod}\n\n狀態：${exchange.status}\n申請時間：${new Date(exchange.createdAt).toLocaleString("zh-TW")}`, chatId);
     return;
   }
   await sendTelegramMessage(`❌ 找不到編號 ${number} 的訂單或交換申請`, chatId);
@@ -395,7 +379,7 @@ async function handlePending(chatId: string) {
   let msg = "⏳ <b>待處理項目</b>\n\n";
   if (pendingOrders.length > 0) {
     msg += "🛒 待處理訂單：\n";
-    msg += pendingOrders.map(o => `  • ${o.orderNumber} | NT$${o.finalAmount} | ${o.status === "awaiting_confirmation" ? "待確認" : "待付款"}`).join("\n");
+    msg += pendingOrders.map(o => `  • ${o.orderNumber} | NT$${o.finalAmount} | ${o.status}`).join("\n");
     msg += "\n\n";
   } else {
     msg += "🛒 無待處理訂單\n\n";
@@ -421,7 +405,7 @@ async function handleStats(chatId: string) {
 async function handleCustomer(parts: string[], chatId: string) {
   const keyword = parts.slice(1).join(" ");
   if (!keyword) {
-    await sendTelegramMessage("⚠️ 用法：/customer [名稱]", chatId);
+    await sendTelegramMessage("⚠️ 用法：/customer [名稱或 LINE ID]", chatId);
     return;
   }
   const results = await searchCustomers(keyword);
@@ -434,7 +418,7 @@ async function handleCustomer(parts: string[], chatId: string) {
     const orderLines = orders.length > 0
       ? orders.map(o => `  • ${o.orderNumber} | NT$${o.finalAmount} | ${o.status}`).join("\n")
       : "  無購買記錄";
-    await sendTelegramMessage(`👤 <b>${c.name}</b>\nLINE：${c.lineId || "未提供"}\n電話：${c.phone || "未提供"}\n\n購買記錄：\n${orderLines}`, chatId);
+    await sendTelegramMessage(`👤 <b>${c.name}</b>\nLINE 名稱：${c.lineName || "未提供"}\nLINE ID：${c.lineId || "未提供"}\n\n購買記錄：\n${orderLines}`, chatId);
   }
 }
 
@@ -447,15 +431,14 @@ async function handleHelp(chatId: string) {
 <b>課程交換：</b>
 /accept [交換編號] - 接受交換
 /reject [交換編號] [原因] - 拒絕交換
-/received [交換編號] [課程資訊] - 記錄收到課程
+/received [交換編號] - 記錄收到課程
 /exchange list - 交換課程清單
 /exchange pending - 待審核交換
 
 <b>課程管理：</b>
-/course add [名稱] [價格] [連結] [狀態]
+/course add [名稱] [價格] [類別]
 /course list - 課程清單
-/course status [名稱] [新狀態]
-/course link [名稱] [新連結]
+/course status [名稱] [已完結/上線中/未開課]
 /course schedule [名稱] [日期]
 /course open [課程名稱]
 /course upcoming - 即將開課
@@ -467,7 +450,7 @@ async function handleHelp(chatId: string) {
 /today - 今日統計
 /pending - 待處理項目
 /stats - 本月統計
-/customer [名稱] - 查詢客戶`, chatId);
+/customer [名稱或 LINE ID] - 查詢客戶`, chatId);
 }
 
 function getStartOfDay() {

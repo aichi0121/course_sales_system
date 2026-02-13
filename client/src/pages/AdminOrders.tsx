@@ -3,17 +3,20 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
+const ORDER_STATUSES = ["待處理", "待確認", "已付款", "已完成", "已取消"] as const;
+
 const statusConfig: Record<string, { label: string; className: string }> = {
-  pending: { label: "待付款", className: "bg-gray-500 text-white" },
-  awaiting_confirmation: { label: "待確認", className: "bg-yellow-500 text-white" },
-  paid: { label: "已付款", className: "bg-green-600 text-white" },
-  completed: { label: "已完成", className: "bg-blue-600 text-white" },
-  cancelled: { label: "已取消", className: "bg-red-500 text-white" },
+  "待處理": { label: "待處理", className: "bg-gray-500 text-white" },
+  "待確認": { label: "待確認", className: "bg-yellow-500 text-white" },
+  "已付款": { label: "已付款", className: "bg-green-600 text-white" },
+  "已完成": { label: "已完成", className: "bg-blue-600 text-white" },
+  "已取消": { label: "已取消", className: "bg-red-500 text-white" },
 };
 
 export default function AdminOrders() {
@@ -23,11 +26,20 @@ export default function AdminOrders() {
     filter === "all" ? undefined : { status: filter }
   );
   const [detailOrder, setDetailOrder] = useState<any>(null);
+  const [editAmount, setEditAmount] = useState<string>("");
 
   const updateStatus = trpc.admin.orders.updateStatus.useMutation({
     onSuccess: () => {
       utils.admin.orders.list.invalidate();
       toast.success("訂單狀態已更新");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const updateAmount = trpc.admin.orders.updateAmount.useMutation({
+    onSuccess: () => {
+      utils.admin.orders.list.invalidate();
+      toast.success("金額已更新");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -42,20 +54,21 @@ export default function AdminOrders() {
           <SelectTrigger className="w-40"><SelectValue placeholder="篩選狀態" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部</SelectItem>
-            <SelectItem value="pending">待付款</SelectItem>
-            <SelectItem value="awaiting_confirmation">待確認</SelectItem>
-            <SelectItem value="paid">已付款</SelectItem>
-            <SelectItem value="completed">已完成</SelectItem>
-            <SelectItem value="cancelled">已取消</SelectItem>
+            {ORDER_STATUSES.map(s => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       <div className="space-y-3">
         {orders?.map(order => {
-          const status = statusConfig[order.status] || statusConfig.pending;
+          const status = statusConfig[order.status] || statusConfig["待處理"];
           return (
-            <Card key={order.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDetailOrder(order)}>
+            <Card key={order.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => {
+              setDetailOrder(order);
+              setEditAmount(String(order.finalAmount));
+            }}>
               <CardContent className="flex items-center justify-between py-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -101,12 +114,12 @@ export default function AdminOrders() {
                   <p>{detailOrder.customer?.name || "未知"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">LINE ID</p>
-                  <p>{detailOrder.customer?.lineId || "未提供"}</p>
+                  <p className="text-muted-foreground">LINE 名稱</p>
+                  <p>{detailOrder.customer?.lineName || "未提供"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">手機</p>
-                  <p>{detailOrder.customer?.phone || "未提供"}</p>
+                  <p className="text-muted-foreground">LINE ID</p>
+                  <p>{detailOrder.customer?.lineId || "未提供"}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">付款方式</p>
@@ -140,10 +153,34 @@ export default function AdminOrders() {
                 </div>
               </div>
 
+              {/* Manual amount adjustment */}
+              <div className="space-y-2">
+                <p className="text-sm font-medium">手動調整金額</p>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    value={editAmount}
+                    onChange={e => setEditAmount(e.target.value)}
+                    placeholder="輸入新金額"
+                    className="w-40"
+                  />
+                  <Button
+                    size="sm"
+                    disabled={updateAmount.isPending || !editAmount || Number(editAmount) === detailOrder.finalAmount}
+                    onClick={() => {
+                      updateAmount.mutate({ id: detailOrder.id, finalAmount: Number(editAmount) });
+                      setDetailOrder({ ...detailOrder, finalAmount: Number(editAmount) });
+                    }}
+                  >
+                    更新金額
+                  </Button>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <p className="text-sm font-medium">更新狀態</p>
                 <div className="flex gap-2 flex-wrap">
-                  {(["pending", "awaiting_confirmation", "paid", "completed", "cancelled"] as const).map(s => {
+                  {ORDER_STATUSES.map(s => {
                     const cfg = statusConfig[s];
                     const isCurrent = detailOrder.status === s;
                     return (

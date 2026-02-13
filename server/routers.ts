@@ -3,12 +3,15 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, adminProcedure, router } from "./_core/trpc";
+import { COURSE_CATEGORIES, COURSE_STATUSES } from "../drizzle/schema";
 import {
   listPublicCourses, listAllCourses, getCourseById, createCourse, updateCourse, deleteCourse,
-  findOrCreateCustomer, listCustomers, getCustomerById, updateCustomerNotes, searchCustomers,
-  createOrder, listOrders, getOrderById, getOrderByNumber, getOrderItems, updateOrderStatus, notifyPayment, confirmPayment, getOrdersByCustomerId,
+  getDistinctPlatforms,
+  findOrCreateCustomer, listCustomers, getCustomerById, updateCustomer, searchCustomers,
+  createOrder, listOrders, getOrderById, getOrderByNumber, getOrderItems, updateOrderStatus,
+  updateOrderAmount, notifyPayment, confirmPayment, getOrdersByCustomerId,
   createExchange, listExchanges, getExchangeById, updateExchangeStatus, getPendingExchanges,
-  getOrderStats, getExchangeStats, getPendingOrders,
+  getOrderStats, getExchangeStats, getPendingOrders, calculateDiscount,
 } from "./db";
 import {
   sendTelegramMessage, isTelegramConfigured,
@@ -29,10 +32,21 @@ export const appRouter = router({
   // ─── Public Course API ───
   course: router({
     list: publicProcedure.query(async () => {
-      return listPublicCourses();
+      const courseList = await listPublicCourses();
+      // 移除僅後台可見的欄位
+      return courseList.map(({ ytLink, cloudLink, ...rest }) => rest);
     }),
     getById: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
-      return getCourseById(input.id);
+      const course = await getCourseById(input.id);
+      if (!course) return null;
+      const { ytLink, cloudLink, ...rest } = course;
+      return rest;
+    }),
+    platforms: publicProcedure.query(async () => {
+      return getDistinctPlatforms();
+    }),
+    categories: publicProcedure.query(() => {
+      return [...COURSE_CATEGORIES];
     }),
   }),
 
@@ -40,9 +54,8 @@ export const appRouter = router({
   order: router({
     create: publicProcedure.input(z.object({
       customerName: z.string().min(1),
+      customerLineName: z.string().optional(),
       customerLineId: z.string().optional(),
-      customerPhone: z.string().optional(),
-      customerEmail: z.string().optional(),
       paymentMethod: z.string().optional(),
       items: z.array(z.object({
         courseId: z.number(),
@@ -52,9 +65,8 @@ export const appRouter = router({
     })).mutation(async ({ input }) => {
       const customerId = await findOrCreateCustomer({
         name: input.customerName,
+        lineName: input.customerLineName,
         lineId: input.customerLineId,
-        phone: input.customerPhone,
-        email: input.customerEmail,
       });
       const result = await createOrder({
         customerId,
@@ -67,17 +79,25 @@ export const appRouter = router({
         const msg = formatNewOrderNotification({
           orderNumber: result.orderNumber,
           customerName: input.customerName,
+          customerLineName: input.customerLineName,
           customerLineId: input.customerLineId,
-          customerPhone: input.customerPhone,
           items: input.items,
           totalAmount: result.totalAmount,
           discountAmount: result.discountAmount,
           finalAmount: result.finalAmount,
+          promoName: result.promoName,
         });
         await sendTelegramMessage(msg);
       }
 
       return result;
+    }),
+
+    // 計算優惠預覽（不建立訂單）
+    calculateDiscount: publicProcedure.input(z.object({
+      items: z.array(z.object({ price: z.number() })).min(1),
+    })).query(({ input }) => {
+      return calculateDiscount(input.items);
     }),
 
     notifyPayment: publicProcedure.input(z.object({
@@ -87,14 +107,13 @@ export const appRouter = router({
       if (!order) throw new Error("Order not found");
       await notifyPayment(order.id);
 
-      // Send Telegram notification
       if (isTelegramConfigured()) {
         const customer = await getCustomerById(order.customerId);
         const msg = formatPaymentNotification({
           orderNumber: order.orderNumber,
           customerName: customer?.name || "客戶",
+          customerLineName: customer?.lineName || undefined,
           customerLineId: customer?.lineId || undefined,
-          customerPhone: customer?.phone || undefined,
           finalAmount: order.finalAmount,
         });
         await sendTelegramMessage(msg);
@@ -115,27 +134,26 @@ export const appRouter = router({
   exchange: router({
     create: publicProcedure.input(z.object({
       applicantName: z.string().min(1),
+      applicantLineName: z.string().optional(),
       applicantLineId: z.string().optional(),
-      applicantPhone: z.string().optional(),
-      wantedCourseId: z.number(),
-      wantedCourseName: z.string(),
+      wantedCourseId: z.number().optional(),
+      wantedCourseName: z.string().optional(),
       offeredCourseName: z.string().min(1),
       offeredCourseDescription: z.string().optional(),
-      provideMethod: z.enum(["account_password", "original_file", "recording"]),
+      exchangeMethod: z.enum(["帳號", "下載原檔", "錄影"]),
     })).mutation(async ({ input }) => {
       const result = await createExchange(input as any);
 
-      // Send Telegram notification
       if (isTelegramConfigured()) {
         const msg = formatExchangeNotification({
           exchangeNumber: result.exchangeNumber,
           applicantName: input.applicantName,
+          applicantLineName: input.applicantLineName,
           applicantLineId: input.applicantLineId,
-          applicantPhone: input.applicantPhone,
-          wantedCourseName: input.wantedCourseName,
+          wantedCourseName: input.wantedCourseName || '未指定',
           offeredCourseName: input.offeredCourseName,
           offeredCourseDescription: input.offeredCourseDescription,
-          provideMethod: input.provideMethod,
+          exchangeMethod: input.exchangeMethod,
         });
         await sendTelegramMessage(msg);
       }
@@ -153,29 +171,45 @@ export const appRouter = router({
       }),
       create: adminProcedure.input(z.object({
         name: z.string().min(1),
+        teacher: z.string().optional(),
         description: z.string().optional(),
         price: z.number().min(0),
-        link: z.string().optional(),
-        status: z.enum(["completed", "ongoing", "upcoming"]),
         scheduledAt: z.string().optional(),
+        totalHours: z.string().optional(),
+        status: z.enum(["已完結", "上線中", "未開課"]),
+        platform: z.string().optional(),
+        category: z.enum(COURSE_CATEGORIES as unknown as [string, ...string[]]),
+        syllabus: z.string().optional(),
+        originalUrl: z.string().optional(),
+        imageUrl: z.string().optional(),
+        ytLink: z.string().optional(),
+        cloudLink: z.string().optional(),
         isPublic: z.boolean().default(true),
         allowExchange: z.boolean().default(true),
       })).mutation(async ({ input }) => {
         const id = await createCourse({
           ...input,
           scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : undefined,
-          source: "self",
-        });
+          source: "自購",
+        } as any);
         return { id };
       }),
       update: adminProcedure.input(z.object({
         id: z.number(),
         name: z.string().optional(),
-        description: z.string().optional(),
+        teacher: z.string().nullable().optional(),
+        description: z.string().nullable().optional(),
         price: z.number().optional(),
-        link: z.string().optional(),
-        status: z.enum(["completed", "ongoing", "upcoming"]).optional(),
         scheduledAt: z.string().nullable().optional(),
+        totalHours: z.string().nullable().optional(),
+        status: z.enum(["已完結", "上線中", "未開課"]).optional(),
+        platform: z.string().nullable().optional(),
+        category: z.enum(COURSE_CATEGORIES as unknown as [string, ...string[]]).optional(),
+        syllabus: z.string().nullable().optional(),
+        originalUrl: z.string().nullable().optional(),
+        imageUrl: z.string().nullable().optional(),
+        ytLink: z.string().nullable().optional(),
+        cloudLink: z.string().nullable().optional(),
         isPublic: z.boolean().optional(),
         allowExchange: z.boolean().optional(),
       })).mutation(async ({ input }) => {
@@ -183,7 +217,7 @@ export const appRouter = router({
         await updateCourse(id, {
           ...rest,
           ...(scheduledAt !== undefined && { scheduledAt: scheduledAt ? new Date(scheduledAt) : null }),
-        });
+        } as any);
         return { success: true };
       }),
       delete: adminProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
@@ -198,7 +232,6 @@ export const appRouter = router({
         status: z.string().optional(),
       }).optional()).query(async ({ input }) => {
         const orderList = await listOrders(input?.status);
-        // Enrich with customer info and items
         const enriched = [];
         for (const order of orderList) {
           const customer = await getCustomerById(order.customerId);
@@ -209,13 +242,20 @@ export const appRouter = router({
       }),
       updateStatus: adminProcedure.input(z.object({
         id: z.number(),
-        status: z.enum(["pending", "awaiting_confirmation", "paid", "completed", "cancelled"]),
+        status: z.enum(["待處理", "待確認", "已付款", "已完成", "已取消"]),
       })).mutation(async ({ input }) => {
-        if (input.status === "paid") {
+        if (input.status === "已付款") {
           await confirmPayment(input.id);
         } else {
           await updateOrderStatus(input.id, input.status);
         }
+        return { success: true };
+      }),
+      updateAmount: adminProcedure.input(z.object({
+        id: z.number(),
+        finalAmount: z.number().min(0),
+      })).mutation(async ({ input }) => {
+        await updateOrderAmount(input.id, input.finalAmount);
         return { success: true };
       }),
     }),
@@ -229,12 +269,12 @@ export const appRouter = router({
       }),
       updateStatus: adminProcedure.input(z.object({
         id: z.number(),
-        status: z.enum(["pending", "accepted", "rejected", "awaiting_course", "completed"]),
+        status: z.enum(["待審核", "確認交換", "婉拒"]),
         rejectReason: z.string().optional(),
       })).mutation(async ({ input }) => {
         await updateExchangeStatus(input.id, input.status, {
           ...(input.rejectReason && { rejectReason: input.rejectReason }),
-          ...(input.status === "completed" && { completedAt: new Date() }),
+          ...(input.status === "確認交換" && { completedAt: new Date() }),
         } as any);
         return { success: true };
       }),
@@ -248,14 +288,18 @@ export const appRouter = router({
       getById: adminProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
         const customer = await getCustomerById(input.id);
         if (!customer) return null;
-        const orders = await getOrdersByCustomerId(customer.id);
-        return { ...customer, orders };
+        const customerOrders = await getOrdersByCustomerId(customer.id);
+        return { ...customer, orders: customerOrders };
       }),
-      updateNotes: adminProcedure.input(z.object({
+      update: adminProcedure.input(z.object({
         id: z.number(),
-        notes: z.string(),
+        name: z.string().optional(),
+        lineName: z.string().nullable().optional(),
+        lineId: z.string().nullable().optional(),
+        notes: z.string().nullable().optional(),
       })).mutation(async ({ input }) => {
-        await updateCustomerNotes(input.id, input.notes);
+        const { id, ...data } = input;
+        await updateCustomer(id, data as any);
         return { success: true };
       }),
       search: adminProcedure.input(z.object({ keyword: z.string() })).query(async ({ input }) => {

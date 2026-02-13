@@ -2,11 +2,11 @@ import { eq, desc, and, sql, like, or, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
-  courses, InsertCourse, Course,
+  courses, InsertCourse,
   customers, InsertCustomer,
   orders, InsertOrder,
   orderItems, InsertOrderItem,
-  transactions, InsertTransaction,
+  transactions,
   exchanges, InsertExchange,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -109,7 +109,7 @@ export async function getUpcomingCourses() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(courses).where(
-    and(eq(courses.status, "upcoming"), eq(courses.isPublic, true))
+    and(eq(courses.status, "未開課"), eq(courses.isPublic, true))
   ).orderBy(courses.scheduledAt);
 }
 
@@ -122,32 +122,41 @@ export async function getCoursesScheduledToday() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   return db.select().from(courses).where(
     and(
-      eq(courses.status, "upcoming"),
+      eq(courses.status, "未開課"),
       gte(courses.scheduledAt, today),
       lte(courses.scheduledAt, tomorrow)
     )
   );
 }
 
+/** 取得所有不重複的平台名稱（供篩選用） */
+export async function getDistinctPlatforms() {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db.selectDistinct({ platform: courses.platform }).from(courses).where(
+    and(eq(courses.isPublic, true), sql`${courses.platform} IS NOT NULL AND ${courses.platform} != ''`)
+  );
+  return result.map(r => r.platform).filter(Boolean) as string[];
+}
+
 // ─── Customer helpers ───
-export async function findOrCreateCustomer(data: { name: string; lineId?: string; phone?: string; email?: string }) {
+export async function findOrCreateCustomer(data: { name: string; lineName?: string; lineId?: string }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  // Try to find by phone or lineId
   let existing;
-  if (data.phone) {
-    const r = await db.select().from(customers).where(eq(customers.phone, data.phone)).limit(1);
+  if (data.lineId) {
+    const r = await db.select().from(customers).where(eq(customers.lineId, data.lineId)).limit(1);
     existing = r[0];
   }
-  if (!existing && data.lineId) {
-    const r = await db.select().from(customers).where(eq(customers.lineId, data.lineId)).limit(1);
+  if (!existing && data.lineName) {
+    const r = await db.select().from(customers).where(eq(customers.lineName, data.lineName)).limit(1);
     existing = r[0];
   }
   if (existing) {
     await db.update(customers).set({
       name: data.name,
+      ...(data.lineName && { lineName: data.lineName }),
       ...(data.lineId && { lineId: data.lineId }),
-      ...(data.email && { email: data.email }),
     }).where(eq(customers.id, existing.id));
     return existing.id;
   }
@@ -168,10 +177,10 @@ export async function getCustomerById(id: number) {
   return result[0];
 }
 
-export async function updateCustomerNotes(id: number, notes: string) {
+export async function updateCustomer(id: number, data: Partial<InsertCustomer>) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  await db.update(customers).set({ notes }).where(eq(customers.id, id));
+  await db.update(customers).set(data).where(eq(customers.id, id));
 }
 
 export async function searchCustomers(keyword: string) {
@@ -179,7 +188,7 @@ export async function searchCustomers(keyword: string) {
   if (!db) return [];
   const pattern = `%${keyword}%`;
   return db.select().from(customers).where(
-    or(like(customers.name, pattern), like(customers.phone, pattern), like(customers.lineId, pattern))
+    or(like(customers.name, pattern), like(customers.lineName, pattern), like(customers.lineId, pattern))
   );
 }
 
@@ -193,31 +202,97 @@ function generateOrderNumber() {
   return `ORD${y}${m}${d}${rand}`;
 }
 
-export function calculateDiscount(itemCount: number, totalAmount: number) {
-  if (itemCount >= 3) return Math.round(totalAmount * 0.15);
-  if (itemCount >= 2) return Math.round(totalAmount * 0.10);
-  return 0;
+/**
+ * 優惠方案計算
+ * 規則：
+ * - 總數量 5 門 → 買 4 送 1（付 4 門一般課程費用）
+ * - 總數量 12 門 → 買 9 送 3（付 9 門一般課程費用）
+ * - 總數量 14 門 → 買 10 送 4（付 10 門一般課程費用）
+ * - 高價課程（> 500）砍半後額外加入付費金額，不佔付費門數
+ * - 一般課程（<= 500）按優惠方案計算付費門數
+ */
+export function calculateDiscount(items: { price: number }[]) {
+  const totalCount = items.length;
+  const normalItems = items.filter(i => i.price <= 500);
+  const premiumItems = items.filter(i => i.price > 500);
+
+  // 優惠方案：精確匹配總數量
+  // 高價課程不佔「付費/免費」門數，一律砍半計價
+  let paidNormalCount = normalItems.length; // 預設全付
+  let freeCount = 0;
+  let promoName = "";
+  let nextPromoHint = "";
+
+  if (totalCount === 14 || totalCount > 14) {
+    // 買10送4
+    paidNormalCount = Math.min(10, normalItems.length);
+    freeCount = Math.max(0, normalItems.length - paidNormalCount);
+    promoName = "買10送4";
+  } else if (totalCount === 12 || totalCount === 13) {
+    // 買9送3
+    paidNormalCount = Math.min(9, normalItems.length);
+    freeCount = Math.max(0, normalItems.length - paidNormalCount);
+    promoName = "買9送3";
+    nextPromoHint = `再加 ${14 - totalCount} 門即可升級為「買10送4」優惠！`;
+  } else if (totalCount === 5) {
+    // 買4送1
+    paidNormalCount = Math.min(4, normalItems.length);
+    freeCount = Math.max(0, normalItems.length - paidNormalCount);
+    promoName = "買4送1";
+    nextPromoHint = "再加 7 門即可升級為「買9送3」優惠！";
+  } else {
+    // 其他數量：照原價
+    paidNormalCount = normalItems.length;
+    freeCount = 0;
+    if (totalCount < 5) {
+      nextPromoHint = `再加 ${5 - totalCount} 門即可享有「買4送1」優惠！`;
+    } else if (totalCount < 12) {
+      nextPromoHint = `再加 ${12 - totalCount} 門即可享有「買9送3」優惠！`;
+    } else {
+      nextPromoHint = `再加 ${14 - totalCount} 門即可享有「買10送4」優惠！`;
+    }
+  }
+
+  // 計算金額
+  const normalTotal = paidNormalCount * 500;
+  const premiumTotal = premiumItems.reduce((sum, i) => sum + Math.round(i.price / 2), 0);
+  const originalTotal = items.reduce((sum, i) => sum + i.price, 0);
+  const finalAmount = normalTotal + premiumTotal;
+  const discountAmount = originalTotal - finalAmount;
+
+  return {
+    originalTotal,
+    discountAmount,
+    finalAmount,
+    freeCount,
+    promoName,
+    hasPremium: premiumItems.length > 0,
+    nextPromoHint,
+  };
 }
 
 export async function createOrder(data: {
   customerId: number;
   items: { courseId: number; courseName: string; price: number }[];
   paymentMethod?: string;
+  finalAmount?: number; // 手動調整金額
 }) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  const totalAmount = data.items.reduce((sum, i) => sum + i.price, 0);
-  const discountAmount = calculateDiscount(data.items.length, totalAmount);
-  const finalAmount = totalAmount - discountAmount;
+
+  const discount = calculateDiscount(data.items);
+  const totalAmount = discount.originalTotal;
+  const discountAmount = discount.discountAmount;
+  const finalAmount = data.finalAmount ?? discount.finalAmount;
   const orderNumber = generateOrderNumber();
 
   const orderResult = await db.insert(orders).values({
     orderNumber,
     customerId: data.customerId,
     totalAmount,
-    discountAmount,
+    discountAmount: totalAmount - finalAmount,
     finalAmount,
-    status: "pending",
+    status: "待處理",
     paymentMethod: data.paymentMethod,
   });
   const orderId = orderResult[0].insertId;
@@ -231,7 +306,7 @@ export async function createOrder(data: {
     });
   }
 
-  return { orderId, orderNumber, totalAmount, discountAmount, finalAmount };
+  return { orderId, orderNumber, totalAmount, discountAmount: totalAmount - finalAmount, finalAmount, promoName: discount.promoName };
 }
 
 export async function listOrders(statusFilter?: string) {
@@ -269,11 +344,22 @@ export async function updateOrderStatus(id: number, status: string, extra?: Part
   await db.update(orders).set({ status: status as any, ...extra }).where(eq(orders.id, id));
 }
 
+export async function updateOrderAmount(id: number, finalAmount: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const order = await getOrderById(id);
+  if (!order) throw new Error("Order not found");
+  await db.update(orders).set({
+    finalAmount,
+    discountAmount: order.totalAmount - finalAmount,
+  }).where(eq(orders.id, id));
+}
+
 export async function notifyPayment(orderId: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(orders).set({
-    status: "awaiting_confirmation",
+    status: "待確認",
     paymentNotifiedAt: new Date(),
   }).where(eq(orders.id, orderId));
 }
@@ -282,10 +368,9 @@ export async function confirmPayment(orderId: number) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
   await db.update(orders).set({
-    status: "paid",
+    status: "已付款",
     paidAt: new Date(),
   }).where(eq(orders.id, orderId));
-  // Create transaction record
   const order = await getOrderById(orderId);
   if (order) {
     await db.insert(transactions).values({
@@ -305,7 +390,7 @@ export async function getPendingOrders() {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(orders).where(
-    or(eq(orders.status, "pending"), eq(orders.status, "awaiting_confirmation"))
+    or(eq(orders.status, "待處理"), eq(orders.status, "待確認"))
   ).orderBy(desc(orders.createdAt));
 }
 
@@ -359,7 +444,7 @@ export async function updateExchangeStatus(id: number, status: string, extra?: P
 export async function getPendingExchanges() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(exchanges).where(eq(exchanges.status, "pending")).orderBy(desc(exchanges.createdAt));
+  return db.select().from(exchanges).where(eq(exchanges.status, "待審核")).orderBy(desc(exchanges.createdAt));
 }
 
 // ─── Stats helpers ───
@@ -368,8 +453,8 @@ export async function getOrderStats(since?: Date) {
   if (!db) return { totalOrders: 0, totalRevenue: 0, pendingCount: 0 };
   let query = db.select({
     totalOrders: sql<number>`COUNT(*)`,
-    totalRevenue: sql<number>`COALESCE(SUM(CASE WHEN status IN ('paid','completed') THEN finalAmount ELSE 0 END), 0)`,
-    pendingCount: sql<number>`SUM(CASE WHEN status IN ('pending','awaiting_confirmation') THEN 1 ELSE 0 END)`,
+    totalRevenue: sql<number>`COALESCE(SUM(CASE WHEN orderStatus IN ('已付款','已完成') THEN finalAmount ELSE 0 END), 0)`,
+    pendingCount: sql<number>`SUM(CASE WHEN orderStatus IN ('待處理','待確認') THEN 1 ELSE 0 END)`,
   }).from(orders);
   if (since) {
     query = query.where(gte(orders.createdAt, since)) as any;
@@ -383,7 +468,7 @@ export async function getExchangeStats(since?: Date) {
   if (!db) return { totalExchanges: 0, pendingCount: 0 };
   let query = db.select({
     totalExchanges: sql<number>`COUNT(*)`,
-    pendingCount: sql<number>`SUM(CASE WHEN exchangeStatus = 'pending' THEN 1 ELSE 0 END)`,
+    pendingCount: sql<number>`SUM(CASE WHEN exchangeStatus = '待審核' THEN 1 ELSE 0 END)`,
   }).from(exchanges);
   if (since) {
     query = query.where(gte(exchanges.createdAt, since)) as any;

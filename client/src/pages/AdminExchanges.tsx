@@ -8,18 +8,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  pending: { label: "待審核", className: "bg-yellow-500 text-white" },
-  accepted: { label: "已接受", className: "bg-green-600 text-white" },
-  rejected: { label: "已拒絕", className: "bg-red-500 text-white" },
-  awaiting_course: { label: "待收課程", className: "bg-blue-500 text-white" },
-  completed: { label: "已完成", className: "bg-gray-600 text-white" },
-};
+const EXCHANGE_STATUSES = ["待審核", "確認交換", "婉拒"] as const;
 
-const methodLabels: Record<string, string> = {
-  account_password: "帳號密碼",
-  original_file: "原檔",
-  recording: "錄影",
+const statusConfig: Record<string, { label: string; className: string }> = {
+  "待審核": { label: "待審核", className: "bg-yellow-500 text-white" },
+  "確認交換": { label: "確認交換", className: "bg-green-600 text-white" },
+  "婉拒": { label: "婉拒", className: "bg-red-500 text-white" },
 };
 
 export default function AdminExchanges() {
@@ -48,17 +42,16 @@ export default function AdminExchanges() {
           <SelectTrigger className="w-40"><SelectValue placeholder="篩選狀態" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">全部</SelectItem>
-            <SelectItem value="pending">待審核</SelectItem>
-            <SelectItem value="accepted">已接受</SelectItem>
-            <SelectItem value="rejected">已拒絕</SelectItem>
-            <SelectItem value="completed">已完成</SelectItem>
+            {EXCHANGE_STATUSES.map(s => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       <div className="space-y-3">
         {exchanges?.map(exchange => {
-          const status = statusConfig[exchange.status] || statusConfig.pending;
+          const status = statusConfig[exchange.status] || statusConfig["待審核"];
           return (
             <Card key={exchange.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setDetailExchange(exchange)}>
               <CardContent className="flex items-center justify-between py-4">
@@ -105,16 +98,16 @@ export default function AdminExchanges() {
                   <p>{detailExchange.applicantName}</p>
                 </div>
                 <div>
+                  <p className="text-muted-foreground">LINE 名稱</p>
+                  <p>{detailExchange.applicantLineName || "未提供"}</p>
+                </div>
+                <div>
                   <p className="text-muted-foreground">LINE ID</p>
                   <p>{detailExchange.applicantLineId || "未提供"}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">手機</p>
-                  <p>{detailExchange.applicantPhone || "未提供"}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">提供方式</p>
-                  <p>{methodLabels[detailExchange.provideMethod] || detailExchange.provideMethod}</p>
+                  <p className="text-muted-foreground">交換方式</p>
+                  <p>{detailExchange.exchangeMethod || "未提供"}</p>
                 </div>
               </div>
 
@@ -137,7 +130,7 @@ export default function AdminExchanges() {
 
               {detailExchange.rejectReason && (
                 <div className="bg-red-50 border border-red-200 p-3 rounded-lg text-sm">
-                  <p className="font-medium text-red-800">拒絕原因</p>
+                  <p className="font-medium text-red-800">婉拒原因</p>
                   <p>{detailExchange.rejectReason}</p>
                 </div>
               )}
@@ -145,7 +138,7 @@ export default function AdminExchanges() {
               <div className="space-y-2">
                 <p className="text-sm font-medium">更新狀態</p>
                 <div className="flex gap-2 flex-wrap">
-                  {(["pending", "accepted", "rejected", "awaiting_course", "completed"] as const).map(s => {
+                  {EXCHANGE_STATUSES.map(s => {
                     const cfg = statusConfig[s];
                     const isCurrent = detailExchange.status === s;
                     return (
