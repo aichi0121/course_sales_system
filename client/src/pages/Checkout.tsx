@@ -26,6 +26,9 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
   const [orderResult, setOrderResult] = useState<{ orderId: number; orderNumber: string; finalAmount: number } | null>(null);
 
+  // Fetch payment info from backend
+  const { data: paymentInfo } = trpc.paymentInfo.get.useQuery();
+
   const createOrder = trpc.order.create.useMutation({
     onSuccess: (data) => {
       setOrderResult(data);
@@ -62,6 +65,11 @@ export default function Checkout() {
     line_pay: "LINE Pay",
     jko_pay: "街口支付",
   };
+
+  // Check if bank info is configured
+  const hasBankInfo = paymentInfo?.payment_bank_name || paymentInfo?.payment_bank_account;
+  const hasLinePayInfo = paymentInfo?.payment_linepay_id || paymentInfo?.payment_linepay_note;
+  const hasJkoPayInfo = paymentInfo?.payment_jkopay_id || paymentInfo?.payment_jkopay_note;
 
   return (
     <div className="min-h-screen bg-background">
@@ -240,22 +248,80 @@ export default function Checkout() {
                     <p className="font-medium text-blue-800">銀行轉帳資訊</p>
                     <p>請轉帳至以下帳戶後，點擊「我已付款」按鈕通知我們。</p>
                     <div className="bg-white p-3 rounded border space-y-1">
-                      <p>銀行：（請聯繫管理員取得帳戶資訊）</p>
+                      {hasBankInfo ? (
+                        <>
+                          {paymentInfo?.payment_bank_name && (
+                            <p><span className="text-muted-foreground">銀行：</span>{paymentInfo.payment_bank_name}</p>
+                          )}
+                          {paymentInfo?.payment_bank_branch && (
+                            <p><span className="text-muted-foreground">分行：</span>{paymentInfo.payment_bank_branch}</p>
+                          )}
+                          {paymentInfo?.payment_bank_account && (
+                            <p><span className="text-muted-foreground">帳號：</span>
+                              <span className="font-mono font-medium">{paymentInfo.payment_bank_account}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 ml-1"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(paymentInfo.payment_bank_account!);
+                                  toast.success("帳號已複製");
+                                }}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </p>
+                          )}
+                          {paymentInfo?.payment_bank_holder && (
+                            <p><span className="text-muted-foreground">戶名：</span>{paymentInfo.payment_bank_holder}</p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-muted-foreground">銀行帳戶資訊尚未設定，請聯繫管理員。</p>
+                      )}
                     </div>
                   </div>
                 )}
 
                 {paymentMethod === "line_pay" && (
-                  <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-sm">
+                  <div className="bg-green-50 border border-green-200 p-4 rounded-lg space-y-2 text-sm">
                     <p className="font-medium text-green-800">LINE Pay 付款</p>
-                    <p>請透過 LINE Pay 轉帳後，點擊「我已付款」按鈕通知我們。</p>
+                    {hasLinePayInfo ? (
+                      <>
+                        {paymentInfo?.payment_linepay_id && (
+                          <p><span className="text-muted-foreground">LINE Pay：</span>
+                            <span className="font-medium">{paymentInfo.payment_linepay_id}</span>
+                          </p>
+                        )}
+                        {paymentInfo?.payment_linepay_note && (
+                          <p>{paymentInfo.payment_linepay_note}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p>請透過 LINE Pay 轉帳後，點擊「我已付款」按鈕通知我們。</p>
+                    )}
+                    <p className="text-xs text-green-700">轉帳完成後請點擊下方「我已付款」按鈕。</p>
                   </div>
                 )}
 
                 {paymentMethod === "jko_pay" && (
-                  <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg text-sm">
+                  <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg space-y-2 text-sm">
                     <p className="font-medium text-orange-800">街口支付</p>
-                    <p>請透過街口支付付款後，點擊「我已付款」按鈕通知我們。</p>
+                    {hasJkoPayInfo ? (
+                      <>
+                        {paymentInfo?.payment_jkopay_id && (
+                          <p><span className="text-muted-foreground">街口支付：</span>
+                            <span className="font-medium">{paymentInfo.payment_jkopay_id}</span>
+                          </p>
+                        )}
+                        {paymentInfo?.payment_jkopay_note && (
+                          <p>{paymentInfo.payment_jkopay_note}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p>請透過街口支付付款後，點擊「我已付款」按鈕通知我們。</p>
+                    )}
+                    <p className="text-xs text-orange-700">付款完成後請點擊下方「我已付款」按鈕。</p>
                   </div>
                 )}
 

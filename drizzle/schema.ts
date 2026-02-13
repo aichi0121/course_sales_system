@@ -204,3 +204,18 @@ export const exchanges = mysqlTable("exchanges", {
 
 export type Exchange = typeof exchanges.$inferSelect;
 export type InsertExchange = typeof exchanges.$inferInsert;
+
+/**
+ * 系統設定資料表（key-value 格式）
+ */
+export const siteSettings = mysqlTable("siteSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  /** 設定鍵名 */
+  settingKey: varchar("settingKey", { length: 255 }).notNull().unique(),
+  /** 設定值 */
+  settingValue: text("settingValue"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SiteSetting = typeof siteSettings.$inferSelect;
+export type InsertSiteSetting = typeof siteSettings.$inferInsert;

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, BookOpen, ShoppingCart, ArrowRightLeft, Users, Bot, LogOut, PanelLeft, Home } from "lucide-react";
+import { LayoutDashboard, BookOpen, ShoppingCart, ArrowRightLeft, Users, Bot, LogOut, PanelLeft, Home, Settings } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
@@ -34,6 +34,7 @@ const menuItems = [
   { icon: ArrowRightLeft, label: "交換管理", path: "/admin/exchanges" },
   { icon: Users, label: "客戶管理", path: "/admin/customers" },
   { icon: Bot, label: "Telegram Bot", path: "/admin/telegram" },
+  { icon: Settings, label: "付款設定", path: "/admin/payment-settings" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

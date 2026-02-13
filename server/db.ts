@@ -8,6 +8,7 @@ import {
   orderItems, InsertOrderItem,
   transactions,
   exchanges, InsertExchange,
+  siteSettings,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -505,4 +506,36 @@ export async function getPendingDeliveryExchangesByCourseId(courseId: number) {
       eq(exchanges.wantedCourseId, courseId)
     )
   );
+}
+
+// ─── Site Settings helpers ───
+export async function getSetting(key: string): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(siteSettings).where(eq(siteSettings.settingKey, key)).limit(1);
+  return result[0]?.settingValue ?? null;
+}
+
+export async function getSettings(keys: string[]): Promise<Record<string, string | null>> {
+  const db = await getDb();
+  if (!db) return {};
+  const result = await db.select().from(siteSettings).where(inArray(siteSettings.settingKey, keys));
+  const map: Record<string, string | null> = {};
+  for (const key of keys) {
+    map[key] = result.find(r => r.settingKey === key)?.settingValue ?? null;
+  }
+  return map;
+}
+
+export async function upsertSetting(key: string, value: string | null) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(siteSettings).values({ settingKey: key, settingValue: value })
+    .onDuplicateKeyUpdate({ set: { settingValue: value } });
+}
+
+export async function upsertSettings(settings: Record<string, string | null>) {
+  for (const [key, value] of Object.entries(settings)) {
+    await upsertSetting(key, value);
+  }
 }

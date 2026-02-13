@@ -15,6 +15,7 @@ import AdminOrders from "./pages/AdminOrders";
 import AdminExchanges from "./pages/AdminExchanges";
 import AdminCustomers from "./pages/AdminCustomers";
 import AdminTelegram from "./pages/AdminTelegram";
+import AdminPaymentSettings from "./pages/AdminPaymentSettings";
 import DashboardLayout from "./components/DashboardLayout";
 
 function PublicRouter() {
@@ -40,6 +41,7 @@ function AdminRouter() {
         <Route path="/admin/exchanges" component={AdminExchanges} />
         <Route path="/admin/customers" component={AdminCustomers} />
         <Route path="/admin/telegram" component={AdminTelegram} />
+        <Route path="/admin/payment-settings" component={AdminPaymentSettings} />
         <Route component={AdminDashboard} />
       </Switch>
     </DashboardLayout>

@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "b9fb128e-7559-4352-a892-a7711c82b7f3",
+  "id": "10268030-241d-474b-b168-c722539bcc33",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "courses": {
@@ -43,9 +43,9 @@
           "autoincrement": false,
           "default": 0
         },
-        "scheduledAt": {
-          "name": "scheduledAt",
-          "type": "timestamp",
+        "startDate": {
+          "name": "startDate",
+          "type": "date",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -130,9 +130,16 @@
           "autoincrement": false,
           "default": "'自購'"
         },
-        "sourceTeacher": {
-          "name": "sourceTeacher",
+        "exchangePartner": {
+          "name": "exchangePartner",
           "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "costPrice": {
+          "name": "costPrice",
+          "type": "int",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -320,7 +327,7 @@
         },
         "exchangeStatus": {
           "name": "exchangeStatus",
-          "type": "enum('待審核','確認交換','婉拒')",
+          "type": "enum('待審核','確認交換','待交付','婉拒')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
@@ -488,7 +495,7 @@
         },
         "orderStatus": {
           "name": "orderStatus",
-          "type": "enum('待處理','待確認','已付款','已完成','已取消')",
+          "type": "enum('待處理','待確認','已付款','待交付','已完成','已取消')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
@@ -555,6 +562,60 @@
           "name": "orders_orderNumber_unique",
           "columns": [
             "orderNumber"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "siteSettings": {
+      "name": "siteSettings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "settingKey": {
+          "name": "settingKey",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "settingValue": {
+          "name": "settingValue",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "onUpdate": true,
+          "default": "(now())"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "siteSettings_id": {
+          "name": "siteSettings_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "siteSettings_settingKey_unique": {
+          "name": "siteSettings_settingKey_unique",
+          "columns": [
+            "settingKey"
           ]
         }
       },

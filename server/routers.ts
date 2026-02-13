@@ -12,6 +12,7 @@ import {
   updateOrderAmount, notifyPayment, confirmPayment, getOrdersByCustomerId,
   createExchange, listExchanges, getExchangeById, updateExchangeStatus, getPendingExchanges,
   getOrderStats, getExchangeStats, getPendingOrders, calculateDiscount,
+  getSettings, upsertSettings,
 } from "./db";
 import {
   sendTelegramMessage, isTelegramConfigured,
@@ -352,6 +353,55 @@ export const appRouter = router({
         const success = await sendTelegramMessage(input.message);
         return { success };
       }),
+    }),
+
+    // Site settings (payment info etc.)
+    settings: router({
+      getPayment: adminProcedure.query(async () => {
+        return getSettings([
+          "payment_bank_name",
+          "payment_bank_branch",
+          "payment_bank_account",
+          "payment_bank_holder",
+          "payment_linepay_id",
+          "payment_linepay_note",
+          "payment_jkopay_id",
+          "payment_jkopay_note",
+        ]);
+      }),
+      updatePayment: adminProcedure.input(z.object({
+        payment_bank_name: z.string().nullable().optional(),
+        payment_bank_branch: z.string().nullable().optional(),
+        payment_bank_account: z.string().nullable().optional(),
+        payment_bank_holder: z.string().nullable().optional(),
+        payment_linepay_id: z.string().nullable().optional(),
+        payment_linepay_note: z.string().nullable().optional(),
+        payment_jkopay_id: z.string().nullable().optional(),
+        payment_jkopay_note: z.string().nullable().optional(),
+      })).mutation(async ({ input }) => {
+        const settings: Record<string, string | null> = {};
+        for (const [key, value] of Object.entries(input)) {
+          if (value !== undefined) settings[key] = value;
+        }
+        await upsertSettings(settings);
+        return { success: true };
+      }),
+    }),
+  }),
+
+  // Public payment info (for checkout page)
+  paymentInfo: router({
+    get: publicProcedure.query(async () => {
+      return getSettings([
+        "payment_bank_name",
+        "payment_bank_branch",
+        "payment_bank_account",
+        "payment_bank_holder",
+        "payment_linepay_id",
+        "payment_linepay_note",
+        "payment_jkopay_id",
+        "payment_jkopay_note",
+      ]);
     }),
   }),
 });
