@@ -174,7 +174,7 @@ export const appRouter = router({
         teacher: z.string().optional(),
         description: z.string().optional(),
         price: z.number().min(0),
-        scheduledAt: z.string().optional(),
+        startDate: z.string().optional(),
         totalHours: z.string().optional(),
         status: z.enum(["已完結", "上線中", "未開課"]),
         platform: z.string().optional(),
@@ -189,7 +189,7 @@ export const appRouter = router({
       })).mutation(async ({ input }) => {
         const id = await createCourse({
           ...input,
-          scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : undefined,
+          startDate: input.startDate || undefined,
           source: "自購",
         } as any);
         return { id };
@@ -200,7 +200,7 @@ export const appRouter = router({
         teacher: z.string().nullable().optional(),
         description: z.string().nullable().optional(),
         price: z.number().optional(),
-        scheduledAt: z.string().nullable().optional(),
+        startDate: z.string().nullable().optional(),
         totalHours: z.string().nullable().optional(),
         status: z.enum(["已完結", "上線中", "未開課"]).optional(),
         platform: z.string().nullable().optional(),
@@ -213,10 +213,10 @@ export const appRouter = router({
         isPublic: z.boolean().optional(),
         allowExchange: z.boolean().optional(),
       })).mutation(async ({ input }) => {
-        const { id, scheduledAt, ...rest } = input;
+        const { id, startDate, ...rest } = input;
         await updateCourse(id, {
           ...rest,
-          ...(scheduledAt !== undefined && { scheduledAt: scheduledAt ? new Date(scheduledAt) : null }),
+          ...(startDate !== undefined && { startDate: startDate || null }),
         } as any);
         return { success: true };
       }),

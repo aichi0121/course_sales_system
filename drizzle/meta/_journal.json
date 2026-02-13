@@ -8,6 +8,13 @@
       "when": 1770983396120,
       "tag": "0000_plain_deathbird",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1770985724559,
+      "tag": "0001_foamy_lizard",
+      "breakpoints": true
     }
   ]
 }

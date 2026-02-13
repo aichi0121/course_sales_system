@@ -2,9 +2,7 @@ import {
   getCoursesScheduledToday,
   getPendingOrders,
   getPendingExchanges,
-  getOrderItems,
-  getCustomerById,
-  getOrdersByCustomerId,
+  updateCourse,
 } from "./db";
 import {
   sendTelegramMessage,
@@ -46,14 +44,17 @@ async function runDailyCheck() {
   lastDailyCheck = today;
 
   try {
-    // Check courses scheduled for today
+    // 1. Check courses scheduled for today → auto update status + TG notification
     const todayCourses = await getCoursesScheduledToday();
     for (const course of todayCourses) {
+      // Auto update status from 未開課 → 上線中
+      await updateCourse(course.id, { status: "上線中" as any });
+      // Send TG notification
       const msg = formatCourseOpeningReminder(course, 0, 0);
       await sendTelegramMessage(msg);
     }
 
-    // Check stale pending orders (older than 24 hours)
+    // 2. Check stale pending orders (older than 24 hours)
     const pendingOrders = await getPendingOrders();
     const staleOrders = pendingOrders.filter(o => {
       const created = new Date(o.createdAt);
@@ -63,12 +64,12 @@ async function runDailyCheck() {
 
     if (staleOrders.length > 0) {
       const lines = staleOrders.map(o =>
-        `  • ${o.orderNumber} | NT$${o.finalAmount} | ${o.status === "待確認" ? "待確認" : "待處理"} | ${new Date(o.createdAt).toLocaleDateString("zh-TW")}`
+        `  • ${o.orderNumber} | NT$${o.finalAmount} | ${o.status} | ${new Date(o.createdAt).toLocaleDateString("zh-TW")}`
       ).join("\n");
       await sendTelegramMessage(`⏰ <b>待處理訂單提醒</b>\n\n以下訂單已超過 24 小時未處理：\n${lines}`);
     }
 
-    // Check stale pending exchanges (older than 48 hours)
+    // 3. Check stale pending exchanges (older than 48 hours)
     const pendingExchanges = await getPendingExchanges();
     const staleExchanges = pendingExchanges.filter(e => {
       const created = new Date(e.createdAt);

@@ -116,12 +116,13 @@ export function formatExchangeNotification(exchange: {
 
 export function formatCourseOpeningReminder(course: {
   name: string;
-  scheduledAt: Date | null;
+  startDate: Date | string | null;
 }, preorderCount: number, exchangeCount: number) {
+  const dateStr = course.startDate ? new Date(course.startDate).toLocaleDateString("zh-TW") : "今天";
   return `📢 <b>課程開課提醒</b>
 
 📚 課程名稱：${course.name}
-📅 開課時間：${course.scheduledAt ? new Date(course.scheduledAt).toLocaleDateString("zh-TW") : "今天"}
+📅 開課日期：${dateStr}
 👥 預購學員數：${preorderCount}
 🔄 預交換數：${exchangeCount}
 

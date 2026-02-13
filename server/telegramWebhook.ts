@@ -290,7 +290,7 @@ async function handleCourse(parts: string[], chatId: string) {
       }
       const course = await getCourseByName(name);
       if (!course) { await sendTelegramMessage(`❌ 找不到課程「${name}」`, chatId); return; }
-      await updateCourse(course.id, { scheduledAt: new Date(dateStr) });
+      await updateCourse(course.id, { startDate: dateStr } as any);
       await sendTelegramMessage(`✅ 課程「${name}」開課時間已設定為 ${dateStr}`, chatId);
       break;
     }
@@ -313,7 +313,7 @@ async function handleCourse(parts: string[], chatId: string) {
         return;
       }
       const lines = list.map(c =>
-        `• ${c.name} | 開課：${c.scheduledAt ? new Date(c.scheduledAt).toLocaleDateString("zh-TW") : "未定"}`
+        `• ${c.name} | 開課：${c.startDate ? new Date(c.startDate).toLocaleDateString("zh-TW") : "未定"}`
       ).join("\n");
       await sendTelegramMessage(`📅 <b>即將開課</b>\n\n${lines}`, chatId);
       break;

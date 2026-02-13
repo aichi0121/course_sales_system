@@ -32,7 +32,7 @@ type CourseForm = {
   teacher: string;
   description: string;
   price: number;
-  scheduledAt: string;
+  startDate: string;
   totalHours: string;
   status: typeof STATUSES[number];
   platform: string;
@@ -48,7 +48,7 @@ type CourseForm = {
 
 const emptyForm: CourseForm = {
   name: "", teacher: "", description: "", price: 500,
-  scheduledAt: "", totalHours: "", status: "未開課",
+  startDate: "", totalHours: "", status: "未開課",
   platform: "", category: "自我成長", syllabus: "",
   originalUrl: "", imageUrl: "", ytLink: "", cloudLink: "",
   isPublic: true, allowExchange: true,
@@ -84,7 +84,7 @@ export default function AdminCourses() {
       teacher: course.teacher || "",
       description: course.description || "",
       price: course.price,
-      scheduledAt: course.scheduledAt ? new Date(course.scheduledAt).toISOString().split("T")[0] : "",
+      startDate: course.startDate ? new Date(course.startDate).toISOString().split("T")[0] : "",
       totalHours: course.totalHours || "",
       status: course.status,
       platform: course.platform || "",
@@ -103,7 +103,7 @@ export default function AdminCourses() {
   const handleSave = () => {
     const payload = {
       ...form,
-      scheduledAt: form.scheduledAt || undefined,
+      startDate: form.startDate || undefined,
       totalHours: form.totalHours || undefined,
       platform: form.platform || undefined,
       syllabus: form.syllabus || undefined,
@@ -243,7 +243,7 @@ export default function AdminCourses() {
               </div>
               <div className="space-y-2">
                 <Label>開課時間</Label>
-                <Input type="date" value={form.scheduledAt} onChange={e => setForm(p => ({ ...p, scheduledAt: e.target.value }))} />
+                <Input type="date" value={form.startDate} onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label>總時數</Label>

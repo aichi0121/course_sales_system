@@ -110,7 +110,7 @@ export async function getUpcomingCourses() {
   if (!db) return [];
   return db.select().from(courses).where(
     and(eq(courses.status, "未開課"), eq(courses.isPublic, true))
-  ).orderBy(courses.scheduledAt);
+  ).orderBy(sql`${courses.startDate} DESC`);
 }
 
 export async function getCoursesScheduledToday() {
@@ -120,11 +120,11 @@ export async function getCoursesScheduledToday() {
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
+  const todayStr = today.toISOString().split('T')[0];
   return db.select().from(courses).where(
     and(
       eq(courses.status, "未開課"),
-      gte(courses.scheduledAt, today),
-      lte(courses.scheduledAt, tomorrow)
+      sql`${courses.startDate} = ${todayStr}`
     )
   );
 }

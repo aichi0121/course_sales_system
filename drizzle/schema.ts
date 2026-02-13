@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, date } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -31,8 +31,8 @@ export const courses = mysqlTable("courses", {
   description: text("description"),
   /** 價格 */
   price: int("price").notNull().default(0),
-  /** 開課時間 */
-  scheduledAt: timestamp("scheduledAt"),
+  /** 開課日期 */
+  startDate: date("startDate"),
   /** 課程總時數（小時） */
   totalHours: varchar("totalHours", { length: 50 }),
   /** 開課狀態：已完結、上線中、未開課 */

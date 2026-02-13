@@ -133,6 +133,28 @@ describe("Notification Formatters", () => {
     expect(msg).toContain("https://example.com/course");
   });
 
+  it("should format course opening reminder correctly", async () => {
+    const { formatCourseOpeningReminder } = await import("./telegram");
+    const msg = formatCourseOpeningReminder({
+      name: "01｜投資理財入門",
+      startDate: new Date("2026-03-01"),
+    }, 5, 2);
+    expect(msg).toContain("課程開課提醒");
+    expect(msg).toContain("01｜投資理財入門");
+    expect(msg).toContain("預購學員數：5");
+    expect(msg).toContain("預交換數：2");
+    expect(msg).toContain("/course open");
+  });
+
+  it("should format course opening reminder without date", async () => {
+    const { formatCourseOpeningReminder } = await import("./telegram");
+    const msg = formatCourseOpeningReminder({
+      name: "測試課程",
+      startDate: null,
+    }, 0, 0);
+    expect(msg).toContain("今天");
+  });
+
   it("should format exchange reject message correctly", async () => {
     const { formatExchangeRejectMessage } = await import("./telegram");
     const msg = formatExchangeRejectMessage({
